@@ -104,6 +104,7 @@ Innovazioni nel C++ moderno (ultimo standard C++20):
 * Migliore gestione delle eccezzioni
 * Funzioni lambda
 * Multithreading e sincronizzazione attraverso costrutti portabili tra SO
+* RValue
 
 Nuovi tipi base:
 
@@ -124,7 +125,8 @@ enum colors_t {black, blue, green, cyan, red, purple, yellow, white};
 
 ```
 int i = 0;
-int& r = i; //r è alias di i, non può essere messo a NULL
+int& r = i; //LValue reference: r è alias di i, non può essere messo a NULL
+int&& s; //Rvalue reference
 ```
 
 * struct
@@ -266,10 +268,12 @@ class CBuffer {
   	int size;
   	char* ptr;
 public:
-  	CBuffer(CBuffer&& source) { //nb: modifica l'oggetto source
-    	this->size=source.size;
-    	this->ptr=source.ptr;
-    	source.ptr=NULL;
+  	CBuffer(CBuffer&& source) { 
+		
+		//nb: modifica l'oggetto source, tanto verrà distrutto
+		this->size=source.size;
+		this->ptr=source.ptr;
+		source.ptr=NULL;
   	}
 };
 ```
@@ -336,26 +340,63 @@ Può avvenire:
 
 * Per valore: si passa una copia duplicata (nello stack), si basa sul costruttore di copia: è un'operazione onerosa. Da usare per tipi base od oggetti semplici.
 
+```
+void func(Buffer b){
+
+	std::cout << buf.size;
+}
+```
+
 * Per indirizzo: si passa il puntatore all'originale, può essere modificato. La funzione chiamata non può fare assunzioni sul tempo di vita dell'indirizzo.
 
-* Per riferimento: si passa l'originale, sia lettura che scrittura. Funziona solo con le variabili. Sintatticamente ricorda un passaggio per valore, semanticamente corrisponde ad un passaggio per indirizzo che però **non può** essere mai NULL.
+
+```
+void func(Buffer* b){
+
+	std::cout << *buf.size;
+}
+```
+
+* Per riferimento: si passa l'originale, sia lettura che scrittura. Sintatticamente ricorda un passaggio per valore, semanticamente corrisponde ad un passaggio per indirizzo che però **non può** essere mai NULL.
+
+```
+void func(Buffer& b){
+
+	std::cout << buf.size;
+}
+```
 
 * Per riferimento costante: si passa l'originale, solo in lettura. Si ottiene precedendo la keyword `const` alla variabile passata.
 
-* Per riferimento rvalue: ottimizzazione utilizzata per il passaggio di parametri in librerie, da non usare, troppo complesso.
 
+```
+void func(const Buffer& b){
 
-* Trasferimento di proprietà:
+	std::cout << buf.size;
+	//buf.size = 0; //exception!
+}
+```
+
+* Per [riferimento RValue](https://smartbear.com/blog/develop/c11-tutorial-introducing-the-move-constructor-and/): ottimizzazione utilizzata per il passaggio di parametri in librerie, da non usare, troppo complesso.
+
+```
+void func(Buffer&& b){
+
+	std::cout << buf.size;
+}
+```
+
+### Trasferimento di proprietà
 
 E' possibile tasferire la proprietà di un dato ad una funzione sfruttando il passaggio di parametro rvalue ed il costruttore di movimento:
 
 ```
-void sing(vector<int>&& v){
+void sink(vector<int>&& v){
 	...
 }
 
 std::vector<int> data = {1,2,3};
-sink(std::move(data));
+sink(std::move(data)); //chiamata esplicita a movimento
 ```
 
 ### Parametri in uscita
@@ -368,17 +409,19 @@ return make_tuple(status, something()); //make_tuple è una funzione generica, a
 
 ### Copia ed Assegnazione
 
-Se l'oggetto a sinistra dell'assegnazione esiste già, si tratta di una assegnazione. Se invece l'oggetto non esiste, allora si tratta di una copia: viene invocato il costruttore di copia
+Se l'oggetto a sinistra dell'assegnazione esiste già, si tratta di una assegnazione. Se invece l'oggetto non esiste, allora si tratta di una copia: viene invocato il costruttore di copia.
 
 ```
 Cpoint A, B;
 
-A = B; //assegnazione
-Cpoint C = B; //copia
-Cpoint D(B); //copia
+A = B; //assegnazione, A esiste, viene invocata assegnazione
+Cpoint C = B; //C non esiste, viene invocato costruttore di copia
+Cpoint D(B); //D non esiste, viene invocata copia
 ```
 
-Durante l'assegnazione di un oggetto, se devono essere asesgnati attributi che sono puntatori, quello che fa il compilatore è copiare il puntatore sorgente in quello destinazione, così i due puntatori pnuteranno allo stesso oggetto (male) e l'area puntata dal puntatore dstinazione non sarà più accesibile (male, memory leakage), la soluzione è **ridefinire l'operatore di assegnazione per la classe**:
+Durante l'assegnazione di un oggetto, se devono essere assegnati attributi che sono puntatori, quello che fa il compilatore è copiare il puntatore sorgente in quello destinazione, così i due puntatori punteranno allo stesso oggetto/area di memoria (male) e l'area puntata dal puntatore destinazione non sarà più accesibile (male, memory leakage).
+
+Per questo motivo, occorre sempre **ridefinire l'operatore di assegnazione per la classe**, se essa contiene puntatori o riferimenti a memoria allocata dinamicamente:
 
 ```
 CBuffer& operator=(const CBuffer& source){
@@ -397,11 +440,11 @@ CBuffer& operator=(const CBuffer& source){
 }
 ```
 
-L'operatore di assegnazione di sovrappone al distruttore: deve rilasciare tutte le risorse possedute.
+L'operatore di assegnazione di sovrappone al distruttore: **deve** rilasciare tutte le risorse possedute.
 
-In ogni caso, costruttore di copia ed operatore di assegnazione devono essere semanticamente equivalenti.
+In ogni caso, costruttore di copia ed operatore di assegnazione **devono** essere semanticamente equivalenti.
 
-**Regola dei tre**: se una classe dispone di una qualunque di queste funzioni membro: costruttore di copia, operatore di assegnazione, distruttore, allora **deve** implementare le altre due. In mancaza di ciò, il compilatore fornirà la propria implementazione, **non generando alcun errore o warning**, quindi sarà nella maggior parte dei casi errata.
+**Regola dei tre**: se una classe dispone di una qualunque di queste funzioni membro: *costruttore di copia, operatore di assegnazione, distruttore*, allora **deve** implementare le altre due. In mancaza di ciò, il compilatore fornirà la propria implementazione, **non generando alcun errore o warning**, e che sarà nella maggior parte dei casi errata.
 
 
 In alcuni casi la copia non è possibile, ma il movimento si ( i.e. `std::unique_ptr`). In questi casi occorre ridefinire l'operatore di movimento, nel caso in cui siano presenti membri allocati dinamicamente:
@@ -426,14 +469,14 @@ CBuffer& operator=(CBuffer&& source){
 
 ### Ereditarietà in C++
 
-Molto differente rispetto a java: una classe può ereditare da una o più classi. Non esiste una classe radice (Object per java).
+Molto differente rispetto a java: **una classe può ereditare da una o più classi**. Non esiste una classe radice (Object per java).
 
 I metodi della classe di base possono essere invocati usando l'operatore di scope `::`, i.e. `ClasseBase::NomeMetodo()`.
 
 
 ### Polimorfismo in C++
 
-Se B estende A, allora è possibile assegnare a `A&` un oggetto B: sfruttabile solo quando si ha a che fare con puntatori, perchè la memoria allocata per A è sempre minore di quella allocata per B, non ci entrerebbe.
+Se B estende A, allora è possibile assegnare a `A&` un oggetto B: sfruttabile solo quando si ha a che fare con puntatori, perchè la memoria allocata per A è sempre minore di quella allocata per B, non ci entrerebbe se allocato staticamente.
 
 Override di metodi: per default, il compilatore utilizza l'implementazione definita nella classe a cui ritiene appartenga l'oggetto. Per forzare un metodo come polimorfico, occorre utilizzare la keyword `virtual`. In questo caso verrà chiamata l'implementazione corretta.
   

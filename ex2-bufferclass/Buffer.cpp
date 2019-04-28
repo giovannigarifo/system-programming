@@ -29,16 +29,51 @@ Buffer::Buffer(const Buffer& source) {
 }
 
 // move contructor
-Buffer::Buffer(Buffer &&source) {
+Buffer::Buffer(Buffer&& source) {
 
-    std::cout << "moving buffer!" << std::endl;
     this->size = source.size;
     this->buf = source.buf;
     source.buf = nullptr;
 }
 
+//move assignment operator
+Buffer& Buffer::operator = (Buffer&& source){
+
+    if(this != &source){
+
+        //delete
+        delete[] this->buf;
+        this->size = 0;
+
+        //copy
+        this->size = source.size;
+        this->buf = source.buf;
+
+        //clear
+        source.buf = nullptr;
+    }
+
+    return *this;
+}
+
+
+//assignment operator
+Buffer& Buffer::operator = (const Buffer& source){
+
+    if(this != &source){
+        delete[] this->buf;
+        this-> buf = nullptr;
+
+        this->size = source.size;
+        this->buf = new int[this->size];
+        memcpy(this->buf, source.buf, source.size * sizeof(int));
+    }
+
+    return *this;
+}
+
 //operator "+" overloading
-Buffer Buffer::operator + (Buffer other){
+Buffer Buffer::operator + (Buffer& other){
 
     Buffer sum = Buffer(this->size + other.size);
 
@@ -47,6 +82,7 @@ Buffer Buffer::operator + (Buffer other){
 
     return sum;
 }
+
 
 //
 // Methods

@@ -16,22 +16,31 @@ private:
 
 
 public:
-    //constructor
-    Buffer(int size);
 
-    //destructor
+    /*
+     * the following six member functions are declared implicitly by the
+     * C++ compiler if not explicitly defined by the programmer. In this
+     * example they're explicitly implemented.
+     */
+
+    //constructor and destructor
+    Buffer(int size);
     ~Buffer();
 
-    //copy constructor
-    Buffer(const Buffer &source);
+    //copy constructor and assignment operator
+    Buffer(const Buffer& source);
+    Buffer& operator = (const Buffer& source);
 
-    //move contructor
-    Buffer(Buffer &&source);
+    //move contructor and move assignment operator
+    Buffer(Buffer&& source);
+    Buffer& operator = (Buffer&& source);
 
-    //operator overloading
-    Buffer operator + (Buffer other);
 
-    //methods
+    /*
+     * Additional member functions
+     */
+
+    Buffer operator + (Buffer& other);
     int getSize();
     bool getData(int pos, int& val);
     bool setData(int pos, int& val);
