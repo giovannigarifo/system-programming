@@ -133,7 +133,7 @@ int&& s; //Rvalue reference
  
 * union
 
-### Classi in C++
+## Classi in C++
 
 ```
 class ResultCode {
@@ -299,7 +299,7 @@ class CBuffer {
 };
 ```
 
-### Azioni del compilatore
+## Azioni del compilatore
 
 Il compilatore invoca costruttore e distruttore al procedere del ciclo di vita di un oggetto.
 
@@ -310,7 +310,7 @@ Le variabili locali sono costruite all'ingreso in un blocco di codice (scope) de
 Le variabili allocate dinamicamente sono allocate e deallocate nello Heap esplicitamente attraverso l'uso di `new` e `delete`.
 
 
-### Allocazione dinamica
+## Allocazione dinamica
 
 Dopo la chiamata a `delete`, è bene impostare il puntatore a NULL.
 
@@ -325,7 +325,7 @@ delete[] ptr; // vengono chiamati i distruttori di tutti gli oggetti
 Sebbene C++ consente l'utilizzo dei puntatori nativi, in associazione alle operazioni di `new` e `delete` **è bene non usarli**, utilizzando i tipi ad alto livello offerti dal C++: Array e Smart Pointers.
 
 
-### Oggetti composti
+## Oggetti composti
 
 in C++, un oggetto può contenere più oggetti in due differenti modi:
 
@@ -334,7 +334,7 @@ in C++, un oggetto può contenere più oggetti in due differenti modi:
 * facendo riferimento ad essi tramite puntatori: nel costruttore vengono allocati gli oggetti, nel distruttore devono essere deallocati.
 
 
-### Passaggio di parametri
+## Passaggio di parametri
 
 Può avvenire:
 
@@ -386,7 +386,7 @@ void func(Buffer&& b){
 }
 ```
 
-### Trasferimento di proprietà
+## Trasferimento di proprietà
 
 E' possibile tasferire la proprietà di un dato ad una funzione sfruttando il passaggio di parametro rvalue ed il costruttore di movimento:
 
@@ -399,7 +399,7 @@ std::vector<int> data = {1,2,3};
 sink(std::move(data)); //chiamata esplicita a movimento
 ```
 
-### Parametri in uscita
+## Parametri in uscita
 
 si può restituire un solo valore od una tupla:
 
@@ -407,7 +407,7 @@ si può restituire un solo valore od una tupla:
 return make_tuple(status, something()); //make_tuple è una funzione generica, accetta n parametri
 ```
 
-### Copia ed Assegnazione
+## Copia ed Assegnazione
 
 Se l'oggetto a sinistra dell'assegnazione esiste già, si tratta di una assegnazione. Se invece l'oggetto non esiste, allora si tratta di una copia: viene invocato il costruttore di copia.
 
@@ -465,22 +465,33 @@ CBuffer& operator=(CBuffer&& source){
 }
 ```
 
+#### Risolvere le problematiche di copia ed assegnazione: Il paradigma Copy&Swap
+
+...
 
 
-### Ereditarietà in C++
+
+## Ereditarietà in C++
 
 Molto differente rispetto a java: **una classe può ereditare da una o più classi**. Non esiste una classe radice (Object per java).
 
 I metodi della classe di base possono essere invocati usando l'operatore di scope `::`, i.e. `ClasseBase::NomeMetodo()`.
 
+Si può ereditare sia in modo pubblico che privato:
 
-### Polimorfismo in C++
+* ereditarietà pubblica: `class Derived: public Base{}` rappresenta la relazione `is-a`
+* ereditarietà privata: `class Derived: Base{}` rappresenta la relazione `has-a`
+
+
+## Polimorfismo in C++
 
 Se B estende A, allora è possibile assegnare a `A&` un oggetto B: sfruttabile solo quando si ha a che fare con puntatori, perchè la memoria allocata per A è sempre minore di quella allocata per B, non ci entrerebbe se allocato staticamente.
 
-Override di metodi: per default, il compilatore utilizza l'implementazione definita nella classe a cui ritiene appartenga l'oggetto. Per forzare un metodo come polimorfico, occorre utilizzare la keyword `virtual`. In questo caso verrà chiamata l'implementazione corretta.
+Override di metodi: per default, il compilatore utilizza l'implementazione definita nella classe a cui ritiene appartenga l'oggetto. Per forzare un metodo come polimorfico, occorre utilizzare la keyword `virtual`. In questo caso verrà chiamata l'implementazione corretta. **Solo le funzioni dichiarate `virtual` sono polimorfiche**
   
-I metodi virtuali astratti sono dichiarati "=0". Una **classe astratta** contiene almeno una funzione virtuale astratta. Una classe che contiene solo funzioni virtuali è equivalente ad una interfaccia java.
+I metodi virtuali astratti sono dichiarati "=0". Una **classe astratta** contiene almeno una funzione virtuale astratta. Una classe che contiene solo funzioni virtuali è equivalente ad una interfaccia java. Una classe astratta, che cioè contiene almeno un metodo puramente virtuale (dichiarato `=0` e non implementato) non può essere istanziata.
+
+Anche **i distruttori non sono polimorfici** per default. È opportuno che tutte le classi che posseggono risorse ed espongono tali risorse con funzioni virtuali, abbiano il distruttore dichiarato virtuale
 
 Gli oggetti C++ non posseggono alcun campo che definisce il tipo della classe, per chiamare il metodo corretto, viene utilizzato il meccanismo della `V-table.`
 
@@ -494,10 +505,15 @@ b1->f(); //il compilatore accede alla vtable di b1 da cui legge il puntatore ad 
 ```
 
 
-### Typecast
+## Typecast
+
+* `static_cast<T>(p)`, utile per scendere nell'albero di ereditarietà
+* `dynamic_cast<T>(p)`, utile per salire nell'albero di ereditarietà
+* `reinterpret_cast<T>(p)`, analogo al cast c-style
+* `const_cast<T>(p)`, elimina la caratteristica di costante da p
 
 
-### Eccezzioni
+## Eccezioni
 
 Gestite con il costrutto try-catch-catch...
 
@@ -509,16 +525,379 @@ In C++ esiste la notazione `catch(...)` per catturare qualunque eccezione.
 
 chiamare `throw` dentro un blocco catch rilancia all'esterno l'eccezione catturata dal catch.
 
-** Mai scrivere un blocco catch che non esegue nessuna strategia di riallineamento **
-
-
+**Mai scrivere un blocco catch che non esegue nessuna strategia di riallineamento**
 
 
 ### Resource Acquisition Is Initialization (RAII)
 
 Uno dei paradigmi del C++: se devo utilizzare una risorsa, scrivo una classe in cui nel costruttore (inizializzazione) acquisisco la risorsa (i.e. apro file) e nel distruttore rilascio la risorsa. In questo modo il ciclo di vita dell'oggetto rispecchierà il ciclo di vita dell'uso della risorsa: quando il programma uscirà dallo scope in cui è stata inizializata la classe, il distruttore verrà chiamato e la risorsa rilasciata.
 
-Questo paradigma è supportao dal fattoche lo stack viene contratto in fase di lancia di un'eccezione, in modo che le risorse acquisite alla costruzione siano liberate.
+Questo paradigma è supportao dal fatto che lo stack viene contratto in fase di lancio di un'eccezione, in modo che le risorse acquisite alla costruzione siano liberate.
+
+
+## Funzioni ed operatori
+
+* **Operator overloading**:
+
+per via del **principio di espressività** del C++, se è lecito effettuare operazioni (+,-,<<) tra tipi base, lo è anche tra gli oggetti: per questi oggetti, è necessario ridefinire le operazioni base.
+
+Non è possibile definire nuovi operatori, o cambiare le precedenze o l'arità (numero di argomenti dell'operatore) dell'operatore.
+
+L'operatore ternario `? :` non è ridefinibile, così come l'operatore di scope `::`, l'operatore di accesso `.` e `sizeof`.
+
+Si può invece ridefinire:
+
+1) subscript operator `[]`
+2) puntatore a funzione: `<tipo-ritornato> (* myfunc) (<argomenti>)`, si può omettere l'asterisco
+
+```
+int f(int i, double d){
+	//corpo
+}
+
+//definisco puntatore a funzione
+int (*var)(int, double);
+var = f; //inizializzo
+var = &f;
+var(10, 3.14);
+```
+
+Esistono gli **oggetti funzionali**: istanza di una qualsiasi classe che abbia ridefinito la funzione membro `operator ()`
+```
+class FC{
+	public:
+		int operator() (int v){
+			return v*2;
+		}
+}
+
+FC fc;
+int i = fc(5);
+```
+
+Se voglio scrivere una funzione che può ricevere come parametro sia un oggetto funzionale che un puntatore a funzione, posso definirla così: 
+
+```
+template <typename F>
+void some_func(F& f) {
+	f();
+}
+```
+
+Esiste **l'operatore di conversione**
+
+```
+operator Tipo_o_UDT() const {
+	//..conversione del dato ad un'altro tipo o UDT..
+	}
+```
+
+* **Funzioni Lamba**
+
+```
+std::for_each(v.begin(), v.end(), [](int i){/*code*/})
+
+//oppure, se torna dei valori
+
+[](int num, int den) -> double {
+	if(den=0)
+		return std::NaN;
+	else
+		return (double)num/den;
+}
+```
+
+Se si vogliono rendere disponibili delle variabili locali all'interno delle funzioni lambda, possiamo aggiungerli all'interno della notazione lambda (passati sia per riferimento che per valore) `[]`. Se si usa la notazione `[&]` tutte le variabili utilizzate nella funzione lambda che non sono passate come parametri sono prese dal contesto in cui è chiamata la funzione lambda. **Nota che questi valori sono mantenuti, come per gli oggetti funzionali, come se fossero definiti static dentro la lambda**, questo perchè una funzione lambda viene trasformata dal compilatore in un oggetto funzionale!
+
+Una funzione lambda che cattura dei valori viene detta **closure**.
+
+```
+int k = 3
+auto f = [k] (int i) {return i*k}
+```
+
+* Il tipo `std::function` permette di modellare una funzione che riceve argomenti di tipo Args e restituisce un valore di tipo R. A questo tipo possono essere assegnati oggetti funzionali, lambda, puntatori a funzione purchè la firma sia conforme a quella indicata.
+
+```
+import <functional>
+
+std::function<float(float,float)> test_fun;
+
+test_fun = std::fmaxf;
+test_fun = std::multiplies<float>();
+int x = 1;
+test_fun = [x](float a, float b) {return a*x*b;} //lambda 
+test_fun = [x](auto a, auto b){returb a*x*b;} //lambda generica
+```
+
+* Funzioni membro `const`:
+
+Dichiarare una funzione membro come `const` forza la funzione ad essere "read-only", è una funzione che non modifica l'oggetto sulla quale è chiamata.
+
+```
+class Base { //an abstract class
+	public:
+		virtual int getName() const = 0;
+}
+```
+
+* Funzioni membro `static`:
+
+Permetto di essere invocate senza che un oggetto della classe sia stato istanziato.
+
+
+## Programmazione generica e Smart Pointers
+
+Si può definire una funzione in modo che operi su un tipo di dato non ancora precisato, vengono chiamate **template**:
+
+```
+template <typename T>
+const T& max(const T& t1, const T& t2){
+	return (t1 < t2 ? t2 : t1);
+}
+```
+Opera sul tipo generico T a patto che supporti:
+
+* l'operatore "<"
+* il construttore di copia, per derivare da una variabile temporanea a partire dal dato costante
+
+Ogni volta che si usa la funzione, il compilatore determina quale tipo effettivo assegnare a "T". I parametri sono passati come `const` proprio perchè devono essere valutabili in fase di compilazione.
+
+Esempio di uso:
+
+```
+int i = max(19,29); // T-> int
+double d = max<double>(2, 3.14); // forza scelta di T a double
+```
+
+Si possono definire anche **classi generiche**:
+
+```
+template <typename T>
+class Accum {
+	T total;
+public:
+	Accum(T start): total(start){}
+	T operator+=(const T& t){ return total+t;}
+	T value() { return total; }
+}
+
+Accum<std::string> stringAccum("");
+Accum<int> intAccum(0);
+```
+
+* NOTA: i template delle classi generiche vanno definite nella stessa unità di traduzione (i.e. file.h), non è possibile separare dichiarazione e definizione dell'elemento generico (i.e. dichiarazione in .h e definizione in .c)
+
+
+### Smart Pointer
+
+La ridefinizione degli operatori permetti di dare una semantica alle operazioni `*` ed `->` anche a dati che non sono (solo) puntatori: ciò permette di creare oggetti che si utilizzano come puntatori ma offrono molto di più.
+
+I template per gli smart pointer sono disponibili tramite `#include <memory>`.
+
+* `std::unique_ptr<BaseType>`: impedisce la copia, ma permette il trasferimento. Implementa il concetto di proprietà. Se utilizzato per puntatore ad array, bisogna utilizzare `<BaseType[]>`. Ha gli stessi tempi di esecuzione e la stessa occupazione di memoria di un puntatore nativo.
+
+* `std::shared_ptr<BaseType>`
+
+Permette proprietà condivisa con un meccanismo di conteggio dei riferimenti. Utilizza più risorse di un puntatore nativo. La funzoine `std::make_shared<BaseType>(Args...)` viene usata per creare un oggetto di tipo BaseType, passando al suo costruttire gli argomenti `Args...`, e ritornarne uno shared pointer.
+
+Cast tra shared_ptr, sono disponibili le due funzioni:
+
+```
+std::shared_ptr<T> static_pointer_cast<T>(shared_ptr<U>)
+std::shared_ptr<T> dynamic_pointer_cast<T>(shared_ptr<U>) //usare per scendere in albero ereditarietà (i.e. da classe puntatore ad oggetto classe base voglio quello della classe derivata, se non possibile ritorna nullptr)
+std::shared_ptr<T> const_pointer_cast<T>(shared_ptr<U>)
+std::shared_ptr<T> reinterpret_pointer_cast<T>(shared_ptr<U>)
+```
+
+Permettono di creare uno shared_ptr a una classe base e farne il cast a uno shared_ptr di classe derivata.
+
+
+
+* `std::weak_ptr<BaseType>`
+
+Permette di osservare il contenuto di uno shared_ptr senza partecipare al conteggi dei riferimenti. Offre i metodi `lock()` ed `expired()` per la sua gestione.
+
+
+
+Per tutti i puntatori, il metodo `reset()` permette di rilasciare il puntatore senza eliminare l'oggetto pointer, in modo tale da riutilizzarlo, l'area di memoria puntata viene rilasciata.
+
+
+## Input/Output
+
+oltre alle funzioni della libreria `stdio.h` come printf/scanf, il c++ offre un'alternativa per la gestione dei flussi di input/output, basata su una gerarchia di classi per la scrittura/lettura di stream:
+
+`ios` è la classe base, virtuale. `istream` ed `ostream` derivano da `ios` e definiscono metodi per input ed output su stream generici, ridefiniscono anche gli operatori `<<` e `>>`. Consentono accesso indiretto allo stream tramite il buffer interno.
+
+`iostream` esegue operazioni di lettura e scrittura.
+
+* Operazioni sui file:
+
+Le classi base sono `ifstream` ed `ofstream`, `fstream` eredita da entrambe e permette accesso sia in lettura che scrittura.
+
+Le operazioni di IO **non sollevano eccessioni**: il programma deve testare esplicitamente il risultato di ogni operazione effettuata. Le funzioni `eof()`, `fail()`, `bad()`, `good()` chiamate sullo stream permettono di discernere la condizione che si è verificata in seguito all'ultima operazione di IO. In uno stato bad, tutte le successive operazioni di lettura/scrittura falliscono silenziosamente. Il metodo `clear()` invocato sullo stream ripristina lo stato dle flusso: chiamare questo metodo dopo aver sistemato lo stream in seguito ad un fail/bad.
+
+
+
+
+## Standard Template Library (STL)
+
+Libreria basata su contenitori, algoritmi ed iteratori. La librerria è scritta utilizzanto template (programmazione generica).
+
+### Container
+
+* Sequenziali: organizzano linearmente una collezzione di oggetti. Array, vector, deque, list, forward_list
+
+* Associativi: contenitori non lineari, organizzati in coppie chiave-valore: accesso agli oggetti tramite chiave. Ordinati: set, map, multiset, multimap. Non ordinati: unordered_set, unordered_map, unordered_multiset, unordered_multimap.
+
+In c++ per ogni tipo UDT fa definira una funzione hashcode, questo perchè non esiste come in java la definizione della classe padre (object per java).
+
+* Container adapter: sono contenitori sequenziali specializzati. stack (LIFO), queue (FIFO), priority_queue. NON supportano gli iteratori.
+
+## std::vector
+
+usa internamente un array allocato dinamicamente.
+
+Elementi accesibili non solo con iteratori ma anche con puntatori tradizionali + offset (memoria è allocata contiguamente). Può espandersi e contrarsi a seconda del bisogno. `capacity` e `size` ritornano rispettivamente lo spazio allocato per il vettore e la dimensione del vettore.
+
+* std::string equivale a `std::vector<char>`
+
+std::string non fa parte dei contenitori della STL! 	
+  
+
+## Contenitori associativi
+
+I dati sono aggregati non per posizione, ma per chiave. Supportano iteratori bidirezionali (elemento successivo - elemento precedente). 
+
+* **set, multiset, map, multimap**: mantengono gli oggetti **ordinati per chiave**, devono supportare l'operatore `<`. Tempo di accesso O(log(n)). Per le mappe, `std::make_pair<KeyType, ValueType>(key, value)` permette di creare una pair da inserire.
+
+* **unordered_set, unordered_multiset, unordered_map, unordered_multimap**: oggetti indicizzati per hash. Tempo di accesso costate. Non sono presenti elementi duplicati (set). La chiave deve essere equal comparable, copiabile o movibile, e **disponibile come valore hash**.
+
+ Per entrambe i ll valore (oggetto) deve avere un costruttore di default e deve essere copiabile e movibile.
+
+
+ ## Interfaccia comune per i Container
+
+ Nonostante esistano diversi tipi di container, essi hanno molto in comune, molte oeprazioni non dipendono dal tipo di container:
+
+ * creazione, cancellazione, accesso e swap di elementi.
+ * accessibilità attraverso iterator.
+ * tranne std::array, ogni container ha un allocatore che lavora in background, volendo, si può fornire un allocator personalizzato invece di quello di default. L'allocator permette di espandere e contrarre dinamicamente il container.
+
+I container supportano il confronto, vengono confrontate le chiavi.
+
+```
+vector<int> v1{1,2,3,4};
+vector<int> v2{1,2,3,4};
+count << (v1==v2) <<endl; //true
+std::swap(v1,v2)
+for (auto v: v1) std::cout << v << " ";
+```
+
+## Iteratori
+
+```
+class c;
+vector<C> v(10);
+vector<C>::iterator iter = v.begin();
+vector<C>::iterator end = v.end();
+
+for(; iter!=end; iter++){ C elem = *iter;}
+```
+
+La classe dell'iteratore definisce le operazioni necessarie per lavorare con il contenitore utilizzando l'iteratore: il compilatore sceglie l'implementazione corretta.
+
+**per ogni contenitore esiste un tipo di iteratore** che implementa la corretta semantica delle operazioni.
+
+Quando l'iteratore lavora sulla collezione, la collezione non può essere modificata.
+
+Tipologie di iteratori:
+
+* forward iterator
+* bidirectional iterator
+* random access iterator
+
+Per ottenere un iteratore oltre a container.begin() e container.end() si possono usare:
+
+```
+std::begin(cont);
+std::end(cont);
+std::rbegin(cont); //punta all'ultimo ed itera all'indietro
+std::rend(cont);
+std::cbegin(cont);
+std::cend(cont);
+std::crbegin(cont);
+std::crend(cont);
+std::prev(iter);
+std::next(iter);
+std::advance(iter, n);
+```
+
+
+## Container Adaptor
+
+Contenitori sequenziali che hanno memoria di come sono stati inseriti gli oggetti:
+
+* `std::stack`: push, pop, top. Supporta gli operatori di confronto. complessità O(1).
+* `std::queue`: push, pop, front, back. 
+* `std::priority_queue`
+
+Non possono essere usati con gli algoritmi della STL., supportano un'interfaccia ridotta rispetto agli altri container. Non supportano gli iteratori e conoscono la loro dimensione.
+
+## Algoritmi
+
+STL fornisce algoritmi per lavoare sui container ed i loro elementi: sono implementati come funzioni template e sono indipendenti dal tipo di elementi del container. L'algoritmo viene applicato in loop ad un intervallo di dati.
+
+* in `<numeric>` si trovano algoritmi numerici come accumulate (che non lavora solo sui numeri), inner_product_adjacent_difference...
+
+* in `<algorithm>` sono raccolti algoritmi per ricerca e ricerca binaria, trasformazione dei dati, partizionamento, ordinamento, merge, operazioni insiemistiche, operazioni su heap, comparazioni lessografiche...
+
+**Algoritmi non modificanti**: applicano funzioni agli elementi senza modificarne la struttura: 
+
+* all_of, any_of, none_of
+* for_each, for_each_n, applicano una funzione ad un range di elementi
+* find, find_if, find_if_not
+
+**Algoritmi modificanti**: algoritmi che possono modificare la struttura di un container.
+
+* copy, copy_if,copy_... copiano range di elementi in una nuova locazione
+* move, move_if, move_backward muovono un range di elementi in una nuova locazione
+* remove, remove_if rimuovono gli elementi che soddisfano uno specifico criterio
+* fill, fill_n
+* transform, applica un mapping
+* generate, generate_n, trovano il primo elemento che soddisfa un criterio
+
+**Algoritmi per il partizionamento**:
+
+* partition
+* partition_copy
+* stable_partition
+* is_partitioned
+* partition_point
+
+**Algoritmi per l'ordinamento**:
+
+* sort, stable_sort
+* partial_sort
+* is_sorted
+* is_sorted_until
+
+**Algoritmi per ricerca binaria**:
+
+* lower_bound
+* upper_bound
+* binary_search
+* equal_range
+
+La maggior parte degli algoritmi della TL accetta come parametro una delle execution policy definite in `<execution>`, permettono l'esecuzione sequenziale, parallela o parallela con vettorizzazione.
+
+* `std::execution::seq` esecuzione sequenziale
+* `std::execution::par` esecuzione parallela con multithreading (genera un numero di thread pari a quelli del processore)
+* `std::execution::par_unseq` esecuzione vettorizzata con SIMD (per GPU: single instruction (algorithm), multiple data)
+
+
+
+
 
 
 
