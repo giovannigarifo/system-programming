@@ -735,12 +735,12 @@ oltre alle funzioni della libreria `stdio.h` come printf/scanf, il c++ offre un'
 
 Le classi base sono `ifstream` ed `ofstream`, `fstream` eredita da entrambe e permette accesso sia in lettura che scrittura.
 
-Le operazioni di IO **non sollevano eccessioni**: il programma deve testare esplicitamente il risultato di ogni operazione effettuata. Le funzioni `eof()`, `fail()`, `bad()`, `good()` chiamate sullo stream permettono di discernere la condizione che si è verificata in seguito all'ultima operazione di IO. In uno stato bad, tutte le successive operazioni di lettura/scrittura falliscono silenziosamente. Il metodo `clear()` invocato sullo stream ripristina lo stato dle flusso: chiamare questo metodo dopo aver sistemato lo stream in seguito ad un fail/bad.
+Le operazioni di IO **non sollevano eccessioni**: il programma deve testare esplicitamente il risultato di ogni operazione effettuata. Le funzioni `eof()`, `fail()`, `bad()`, `good()` chiamate sullo stream permettono di discernere la condizione che si è verificata in seguito all'ultima operazione di IO. In uno stato bad, tutte le successive operazioni di lettura/scrittura falliscono silenziosamente. Il metodo `clear()` invocato sullo stream ripristina lo stato del flusso: chiamare questo metodo dopo aver sistemato lo stream in seguito ad un fail/bad.
 
 
 
 
-## Standard Template Library (STL)
+# Standard Template Library (STL)
 
 Libreria basata su contenitori, algoritmi ed iteratori. La librerria è scritta utilizzanto template (programmazione generica).
 
@@ -897,7 +897,418 @@ La maggior parte degli algoritmi della TL accetta come parametro una delle execu
 
 
 
+# Librerie
+
+Processo di compilazione:
+
+* analisi lessicale (pre-processor)
+* analisi sintattica, produce un Abstract Syntax Tree 
+* analisi semantica, decora l'AST
+* istanziazione dei template
+* generazione dell'assembler semanticamente identico al programma C, genera un file oggetto.
+* il linker unisce più moduli oggetto, comprese le librerie, in un eseguibile finale. Se è necessario utilizzare librerie esterne, va aggiunto il flag `-l<nomelibreria>`, i.e. per la libreria matematica: `-lm`. Oltre al nome della libreria va anche data la lista di directory nelle quali cercare le librerie con l'opzione `-L<>`, questa opzione fa ovverride del contenuto della variabile d'ambiente `LIBPATH`.
+
+#### Caricamento delle librerie
+
+Due fasi:
+
+* identificazione dei moduli necessari e loro caricamento in memoria
+* aggiornamento degli indirizzi delle chiamate alle funzioni per puntare correttamente ai moduli caricati
+
+Le due fasi possono essere fatte:
+
+* durante il collegamento (dal linker)
+* durante il caricamento del programma (dal loader), in questo caso si caricano le librerie dinamiche (condivise) con estensione su win/*nix: `.dll` / `.so`
+* durante l'esecuzione (dal programma stesso)
+
+#### Tassonomia delle librerie
+
+* Librerie a collegamento statico
+
+Contengono funzionalità collegate staticamente al codice binario in fase di compilazione. Una libreria statica è un file archivio che contiene un insieme di file object, creato dall'`archiver`. In linux hanno estensione `.a`, i.e.: `libm.a`. In windows hanno estensione `.lib`.
+
+Vantaggi: non ci sono dubbi su versione adottata, codice è nell'eseguibile (portabilità)
+
+Svantaggi: stesse librerie presenti in processi differenti, applicazione va ricompilata ad ogni modifica della libreria.
+
+* Librerie a collegamento dinamico
+
+Il file eseguibile non contiene i moduli della libreria, sono caricati successivamente (dal loader) nello spazio di indirizzamento del processo. In linux il dynamic linker è la libreria condivisa `ld.so`, non richiede il caricamento di altre librerie, altrimenti non funzionerebbe. In windows il loader è parte del kernel.
+
+
+# Programmazione concorrente
+
+La libreria C++ per l'uso dei thread astrae le implementazioni dei thread nativi in windows e linux, permettendo di scrivere un'implementazione multi piattaforma di un programma concorrente.
+
+Problema dell'accesso a variabili condivise in memoria: la presenza di cache hw ed il possibile riordinamento delle istruzioni da parte delle CPU con esecuzione speculativa ed out-of-order rende non determiniscono il risultato dell'accesso in r/w alla stessa locazione di memoria da parte di due thread. occorre utilizzare costrutti di sincronizzazione per definire esplicitamente l'ordine di esecuzione.
+
+Ogni Thread dispone di:
+
+* un proprio **stack** delle chiamate, un proprio stack pointer e program counter
+* un proprio puntatore all'ultimo contesto per la gestione delle eccezioni (puntatore al catch block)
+
+I Thread condividono:
+
+* le **variabili globali**
+* l'area in cui è memorizzato il codice (**code segment**)
+* l'area delle **costanti**
+* lo **heap**
+
+## Thread in C++: libreria std::thread e sincronizzazione
+
+In C++11 è stato reso il concetto di thread parte integrande del linguaggio, rendendo semplice la scrittura di programmi portabili tra piattaforma che offrono librerie di basso livello per la gestione dei thread implementativamente diverse tra loro.
+
+Due approcci per la scrittura di programmi concorrenti:
+
+* Uno di alto livello, basatolle promise std::async ed std::future
+* Uno di basso livello, che richiede l'uso esplicito di thread e costrutti di sincronizzazione.
+
+#### La classe `std::thread`
+
+modella un oggetto che rappresenta un singolo thread di esecuzione del sistema operativo (incapsula un riferimento al thread specifico del SO).
+
+L'esecuzione dell'oggetto **callable** (i.e. funzione, lambda, oggetto funzionale) argomento del costruttore del thread inizia immediatamente dopo la costruzione dell'oggetto thread. Al termine della funzione, il thread viene distrutto e cessa di esistere.
+
+Altri parametri oltre al callable vengono inoltrati all'oggetto callable attraverso la funzione `std::forward` che inoltra un riferimento al dato originale o un riferimento rvalue, in funzione del tipo di dato passato. 
+
+Per passare un dato come riferimento (i.e. per ottenere valori di ritorno, dato che la funzione callable deve essere void) e non come una copia temporanea occorre incapsularlo in un  oggetto di tipo `std::refernce_wrapper<T>` tramite l'uso delle funzioni definite in `<functional>`: `std::ref()` ed `std::cref()`. Nota bene: i valori sono passati come **riferimento** e non come indirizzo: se passo un parametro `T` nella callable il tipo sarà `T&`.
+
+**Problema**: l'oggetto passato tramite riferimento al thread deve avere un ciclo di vita maggiore di quello del thread.
 
 
 
+Gestione del thread una volta creato:
 
+1. il metodo `join()` della classe thread permette di far bloccare il chiamante in attesa della terminazione del thread su cui si fa join.
+
+2. Il metodo `detach()` consente di far andare il thread senza che il thread principale abbia più conoscenza dello stato di avanzamento del thread sganciato.
+
+3. travasare le informazioni contenute nell'oggetto thread in un altro oggetto attraverso l'operazione di movimento
+
+Se nessuna delle operazioni precedenti viene effettuata, e si distrugge l'oggetto thread, **l'intero programma termina**, invocando `std::terminate()`. Se il thread principale di un programma termina, tutti i thread secondari ancora esistenti **termineranno improvvisamente**: mai dimenticare di chiarare join o detach, anche in caso di eccezione, una soluzione semplice sfruttando il paradigma **RAII** consiste nell'utilizzo di una **classe che chiami join() nel distruttore**:
+
+```
+#include <thread>
+
+class thread_guard {
+  std::thread& t;
+
+public:
+  thread_guard(std::thread& t_): t(t_) {}
+
+  ~thread_guard() {
+    if(t.joinable()) t.join(); 
+  }
+
+  thread_guard(thread_guard const&)=delete;
+  thread_guard& operator=(thread_guard const&)=delete;
+};
+
+void f() {
+  std::thread t(...);
+  thread_guard g(t); // ha lo stesso ciclo di vita di t
+}
+```
+
+Se al thread viene passato come oggetto Callable una funzione membro di una classe, occorre utilizzare questa sintassi, aggiungendo l'oggetto `this`:
+
+```
+class MyClass
+{
+    void FunctA();
+    void FunctB();
+
+    void run()
+    {
+        std::thread t(&MyClass::FunctA, this);
+        std::thread r(&MyClass::FunctB, this);
+    }
+};
+```
+
+#### Costrutti di sincronizzazione
+
+1. Mutual exclusion: `std::mutex` definito in `<mutex>`
+
+Gli oggetti di questa classe pemettono l'accesso controllato a porzioni di codice a un solo thread alla volta.
+
+Offre i metodi di sincronizzazione: `lock()` ed `unlock()`. Lock consente di bloccare il thread in attesa di un unlock: se non ben gestito il thread può rimanere bloccato per sempre (deadlock).
+
+2. `std::recursive_mutex`
+
+Può essere acquisito più volte consecutivamente dallo stesso thread, dovrà essere rilasciato altrettante volte
+
+3. `std::timed_mutex`
+
+Aggiunge i metodi `try_lock_for()` e `try_lock_until()`, pone un limite di tmepo all'attesa massima
+
+4. `std::recursive_timed_mutex`
+
+sia ricorsivo che temporizzato.
+
+La classe generica `std::lock_guard<Lockable>` utilizza il paradigma RAII per garantire che un mutex venga sempre rilasciato. Il costruttore invoca il metodo `lock()` dell'oggetto passato come parametro, il distruttore invoca `unlock()`.
+
+Per evitare che il thread si blocchi sul mutex, la classe mutex mette a disposizione il metodo `try_lock()`: restituisce un booleano per indicare se è stato possibile acquisirlo o meno. Se l'acquisizione ha avuto successo, il mutex può essere adottato da un oggetto lock_guard così da gestirne il rilascio al termine dell'utilizzo.
+
+```
+std::mutex m;
+
+void someFunction() {
+
+  while (m.try_lock() == false) {
+    do_some_work();
+  }
+
+  std::lock_guard<std::mutex> l(m, std::adopt_lock); // l registra m al proprio interno, senza cercare di acquisirlo
+
+  ...
+
+  //chiamata ai distruttori, l rilascia m
+}
+```
+
+`std::scoped_lock<Lockable>` è stato introdotto come evoluzione RAII di `std::lock`. E' equivalente a lock_guard ma è un template con un numero variabile di parametri (Lockable) accettati, il lock viene acquisito su tutti i Lockable passati al momento della creazione, e rilascito alla ditruzione. Se al lock dell'n-esimo mutex passato viene lanciata un'eccezione, tutti i lock già riuscitit vengono rilasciati. **Risolve il problema del deadlock**.
+
+`std::unique_lock<Locable>` estende il comportamento di lock_guard: offre gli stessi metodi lock e unlock, il costruttore offre numerose politiche di gestione selezionate in base al secondo paraemtro: 
+
+* `adopt_lock` verifica che il thread possieda già il Lockable passato come parametro e lo adotta.
+
+* `defer_lock` si limita  aregistrare il riferimento al Lockable senza cercare di acquisirlo.
+
+`std::shared_mutex` è una primitiva di sincronizzazione che permette due forme di accesso: condiviso ed esclusivo. mentre la regione è posseduta in modo condiviso, eventuali richieste di accesso esclusive sono messe in atesa, richieste di accesso condiviso sono garantite subito. Utile per distinguere accessi in lettura, che possono essere concorrenti, da accessi in scrittura, che devono essere esclusivi.
+
+```
+class MyCounter
+{ public:
+    int get() {
+        std::shared_lock lock_(mutex_);
+        return counter_;
+    }
+    void increment() {
+        std::unique_lock lock_(mutex_);
+        counter_++;
+    }
+    void reset() {
+        std::unique_lock lock_(mutex_);
+        counter_ = 0;
+    }
+private:
+    std::shared_mutex mutex_;
+    int counter_{ 0 };
+};
+```
+
+#### Condition variable in C++11
+
+`std::condition_variable` modella una primitiva di sincronizzazione che permette l'attesa condizionata di uno o più thread., fino a che non si verifica una **notifica** da parte di un altro thread, **scade o un timeout** o si verifica una **notifica spuria**. Una condition_variable richiede l'esistenza di un unique_lock. 
+
+* `wait(unique_lock)` per bloccare l'esecuzione del thread, mettendolo in stato di not_runnable nella queue del SO, senza che consumi CPU. Esiste una versione che ottiene come secondo parametro un Callable (lambda) per testare se la condizione di wait è valida o meno, in modo da evitare di andare in sleep se è inutile: è lecito fare il test perchè la wait si fa sempre avendo già preso il lock.
+
+* Un altro thread può infromare uno o tutti i thread attuamente in attesa che la condizione sia verificata attraverso i metodi `notify_one()` e `notify_all()`. E' bene che la notify venga fatta dal thread quando ancora possiede il mutex.
+
+
+#### Operazioni atomiche
+
+Le moderne CPU supportano alcune istruzioni specializzate per permettere l'accesso atomico ad un singolo valore. 
+
+La classe  `std::atomic<T>` offre la possibilità di accedere in modo atomico al tipo T, garantendo che gli accessi concorrenti alla variabile sono osservabili nell'ordine in cui avvengono, questo garantisce il meccanismo minimo di sincronizzazione. Lettura e scrittura di queste variabili sono implementate seguendo tecniche di memory fence basate su spin lock.
+
+Le operazioni effettuate sulla variabile sono eseguite dalla CPU nell'ordine in cui sono scritte. 
+
+```
+std::atomic<boolean> done = false;
+
+void task1() {
+  //continua ad elaborare fino a che non viene detto di smettere
+  while (! done.load() /*atomica*/ ) {
+    process();
+  }
+}
+
+void task2() {
+  wait_for_some_condition();
+  //segnala che il task1 deve finire
+  done.store(true); //atomica
+  //...
+}
+
+void main() {
+  auto f1=std::async(task1);
+  auto f2=std::async(task2);
+}
+```
+
+Il namespace `std::this_thread` offre un insieme di funzioni che permettono di interagire con il thread corrente.
+
+* `get_id()` ritorna l'ID del thread corrente
+
+* `sleep_for(duration)` sospende l'esecuzione del thread corrente per almeno il tempo indicato.
+
+* `sleep_until(time_point)`
+
+* `yield()` eseguito dal thread running, cheide allo scheduler di rischedulare il thread corrente al fondo della runing_queue, lasciando quindi la CPU agli altri thread (se ci sono). Per alcune architetture il compilatore mappa yield come`nop`.
+
+**Non usare queste funzioni per gestire la sincronizzazione.**
+
+
+## Sincronizzazione ad alto livello in C++11
+
+`std::async` ed `std::future` definite nell'header `<future>` permettono di implementare algoritmi paralleli in cui ogni thread opera su sotto compiti indipendenti:
+
+* la computazione di uno non dipende da quella di un altro
+* non vi è accesso in scrittura a dati condivisi
+
+
+#### `std::async`
+
+`std::async` accetta un parametro Callable che restituisce un oggetto di tipo `<T>` ed eventuali parametri da passare all'oggetto chiamabile, restituisce un oggetto di tipo `std::future<T>`. 
+
+Quando viene eseguita async, se possibie, invoca un thread a cui passa l'oggetto Callable con i relativi parametri. Altrimenti il task viene eseguito **in modo sincrono** al momento della chiamata a `wait()` o `get()` sull'oggetto future.
+
+In ogni caso, `async()` ritorna immediatamente, senza attendere il completamento della funzione chiamata: di fatto, sgancia il thread, se può, e ritorna.
+
+Si accede al risultato dell'esecuzione attraverso il metodo `get()`:
+
+* se l'esecuzione è andata a buon fine ritorna il risultato
+
+* se il thread secondario è terminato con un eccezione rilancia l'eccezzione nel thread corrente
+
+* se l'esecuzione è ancora in corso, blocca il thread che chiama get in attesa che il thread sganciato finisca
+
+* se l'esecuzione non è ancora cominciata, ne forza l'avvio sincrono (nel thread corrente).
+
+```
+#include <future>
+#include <string>
+
+std::string f1(std:string p1, double p2) { ... }
+std::string f2(int p) { ... }
+
+int main() {
+  // calcola f1("mystring", 3.14) + f2(18)
+  std::future<std::string> future1 = std::async(f1, "mystring", 3.14);
+  std::string res2 = f2(18);  //calcola sul thread principale
+  std::string res1 = future1.get(); //blocca in attesa di risultato
+  std::string result = res1+res2;
+}
+```
+
+`std::async` consente di precedere l'oggetto chiamabile con una politica di lancio:
+
+* `std::launch::async` attiva un thrad secondario, lacnai eccezione `system_error` se il multithrading non è supportato o non ci sono risorse disponibili per crare nuovo thread (ogni thread consuma all'incirca 2MB di stack).
+
+* `std::launch::deferred` comunica che l'oggetto chiamabile dovrà essere valutato solo se e quando qualcuno chiamerà `get()` o `wait()`, di fatto non genera alcun thread aggiuntivo, l'oggetto Callabile verrà eseguito dal thread corrente.
+
+Se la politica viene omessa, dapprima viene provata la politica async, se non è possibile, l'attività viene segnata come deferred.
+
+
+#### `std::future<T>`
+
+Consente di accedere in modo sicuro e ordinato al risultato di un'operazione asincrona. Il tipo T rappresenta il tipo del risultato ritornato. Mantiene internamente uno stato condiviso con l'oggetto Callable passato ad async, quando viene invocato il metodo `get()` del future, lo stato condiviso viene rimosso: l'oggetto future entra in uno stato invalido. `get()` può essere **chiamato una sola volta**.
+
+`wait()` consente di forzare l'avvio del task e attenderne la terminazione, senza prelevare il risultato: può essere chiamato più volte, se il task è già terminato, ritorna immediatamente. 
+
+E' possibile attendere il completamento per un periodo specifico di tempo, **senza forzare l'avvio del task** se la politica è deferred, attraverso `wait_for()` e `wait_until()`.
+
+Quando un oggetto future viene distrutto, il distruttore ne attende la fine: se la computazione è ancora attva, questo può comportare un'attesa significativa. Le attività lanciare in questo modo non sono cancellabili se non avendo cura di condividere con la funzione chiamata una variabile che possa essere usata come criterio di terminazione.
+
+```
+int quickComputation();    //approssima il risultato con un'euristica 
+
+int accurateComputation(); // trova la soluzione esatta, ma richiede tempo 
+                        
+std::future<int> f; // dichiarato all'esterno perché il suo ciclo di vita
+                    // potrebbe estendersi più a lungo della funzione
+
+int bestResultInTime()
+{
+  // definisce il tempo disponibile
+  auto tp = std::chrono::system_clock::now() + std::chrono::minutes(1);
+  
+  // inizia entrambi i procedimenti
+  f = std::async (std::launch::async, accurateComputation);
+  int guess = quickComputation();
+  
+  // trova il risultato accurato, se disponibile in tempo
+  std::future_status s = f.wait_until(tp);
+  
+  // ritorna il miglior risultato disponibile
+  if (s == std::future_status::ready) {
+    return f.get();
+  } else {
+    return guess; // attenzione: accurateComputation() continua!
+  }
+}
+```
+
+#### `std::shared_future<T>`
+
+Evita data race nell'accesso a un singolo oggetto da parte di thread multipli: utile se bisogna valutare la terminazione dell'operazione asincrona in più thread. permette di chiamare `get()` più volte, produrrà sempre lo stesso risultato.
+
+```
+int task1(); // prima fase del calcolo
+std::string task2(std::shared_future<int>); // seconda fase
+double task3(std::shared_future<int>); // terza fase
+
+int main() {
+
+  std::shared_future<int> f1 = std::async(std::launch:async, task1).share();
+  std::future<std::string> f2 = std::async(task2, f1); //passo sf di f1 per ottenere il risultato con f1.get()
+  std::future<double> f3 = std::async(task3, f1);
+
+  try { 
+    std::string str = f2.get();
+    double d = f3.get();
+  } catch (std::exception& e) {
+    //gestisci eventuali eccezioni
+  }
+}
+```
+
+#### `std::promise<T>`
+
+Fa da ponte tra il Callable eseguito in un nuovo thread da async e l'oggetto future restituito.
+
+Rappresenta l'impegno, da parte del thread, a produrre prima o poi un oggetto di tipo T e di metterlo a disposizione, oppure di notificare un'eccezione che abbia impedito il calcolo dell'oggetto. Dato un oggetto promise, si può verificare la promessa si è avverata richiedendo l'oggetto future corrispondente attraverso il metodo `get_future()`.
+
+```
+/*
+* Implementazione di async home-made sfruttando thread e promise
+*/
+
+#include <future>
+
+// f si impegna a fornire una promise
+void f(std::promise<std::string> p) {
+
+  try {
+    //Calcolo il valore da restituire...
+
+    std::string result = …;
+    p.set_value(std::move(result));
+  
+  } catch (...) {
+    p.set_exception(std::current_exception());
+  }
+} 
+
+int main() {
+  std::promise<std::string> p;
+  std::future<std::string> f = p.get_future();
+  
+  // creo un thread, forzando p a essere passata per movimento
+  std::thread t(f, std::move(p));  
+  t.detach();  
+
+  // faccio altro...
+
+  // accedo al risultato del thread
+  std::string res = f.get();
+}
+```
+
+#### Quando usare thread e quando async
+
+* con async si può impostare il tipo di esecuzione (async, deferred)
+* con thraed non c'è gestione built-in di eccezioni e valori di ritorno.
+* con thread si possono ottenere risultati intermedi
