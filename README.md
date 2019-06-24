@@ -971,11 +971,9 @@ L'esecuzione dell'oggetto **callable** (i.e. funzione, lambda, oggetto funzional
 
 Altri parametri oltre al callable vengono inoltrati all'oggetto callable attraverso la funzione `std::forward` che inoltra un riferimento al dato originale o un riferimento rvalue, in funzione del tipo di dato passato. 
 
-Per passare un dato come riferimento (i.e. per ottenere valori di ritorno, dato che la funzione callable deve essere void) e non come una copia temporanea occorre incapsularlo in un  oggetto di tipo `std::refernce_wrapper<T>` tramite l'uso delle funzioni definite in `<functional>`: `std::ref()` ed `std::cref()`. Nota bene: i valori sono passati come **riferimento** e non come indirizzo: se passo un parametro `T` nella callable il tipo sarà `T&`.
+Per passare un dato come riferimento (i.e. per ottenere valori di ritorno, dato che la funzione callable deve essere void) e non come una copia termporanea occorre incapsularlo inun oggetot di tipo `std::refernce_wrapper<T>` tramite l'uso delle funzioni definite in `<functional>`: `std::ref()` ed `std::cref()`.
 
 **Problema**: l'oggetto passato tramite riferimento al thread deve avere un ciclo di vita maggiore di quello del thread.
-
-
 
 Gestione del thread una volta creato:
 
@@ -1312,3 +1310,5 @@ int main() {
 * con async si può impostare il tipo di esecuzione (async, deferred)
 * con thraed non c'è gestione built-in di eccezioni e valori di ritorno.
 * con thread si possono ottenere risultati intermedi
+
+
