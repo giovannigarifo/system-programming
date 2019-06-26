@@ -48,9 +48,8 @@ void Scheduler::start() {
         this_thread::sleep_for(chrono::milliseconds(j.getStart_time()));
 
         //acquire running mutex
-        this->running_mutex.lock();
+        lock_guard<mutex> lock(this->running_mutex);
         this->running.push(j);
-        this->running_mutex.unlock();
 
         ready.pop(); //pop top element
     }
@@ -94,17 +93,15 @@ void Scheduler::workerExecuteJob() {
 
             j.setCompletion_time(0); //TODO
 
-            completed_mutex.lock();
+            lock_guard<mutex> lock(this->completed_mutex);
             cout << "Thread " << tid << " fully completed the job " << j.getId() << endl;
             completed.push_back(j);
-            completed_mutex.unlock();
 
         } else {
 
-            running_mutex.lock();
+            lock_guard<mutex> lock(this->running_mutex);
             cout << "Thread " << tid << " worked on the job " << j.getId() << endl;
             running.push(j);
-            running_mutex.unlock();
         }
 
         running_mutex.lock(); //lock before testing while
@@ -112,7 +109,6 @@ void Scheduler::workerExecuteJob() {
 
     running_mutex.unlock(); //unlock before exit
     cout << "Thread " << tid << " is terminating" << endl;
-    //terminate();
 }
 
 

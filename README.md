@@ -1920,7 +1920,7 @@ public:
 
 ## Condition variable in C++11
 
-Spesso un thread deve asèettare uno o più risultati intermedi prodotti da altri thread, per motivi di efficienza, l'attesa non deve consumare risorse. La coppia di classi promise/future offrono una soluzione limitata al problema, valida solo quando occorre notificare la disponibilità di un solo dato.
+Spesso un thread deve aspettare uno o più risultati intermedi prodotti da altri thread, per motivi di efficienza, l'attesa non deve consumare risorse. La coppia di classi promise/future offrono una soluzione limitata al problema, valida solo quando occorre notificare la disponibilità di un solo dato.
 
 `std::condition_variable` modella una primitiva di sincronizzazione che permette l'attesa **condizionata** di uno o più thread, fino a che non si verifica una **notifica** da parte di un altro thread, **scade un timeout** o si verifica una **notifica spuria**. 
 
