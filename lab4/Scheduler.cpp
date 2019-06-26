@@ -9,7 +9,7 @@
 Scheduler::Scheduler() {
 
     this->ready = priority_queue<Job, vector<Job>, GreaterThanByStartTime>();
-    this->running = queue<Job>();
+    this->runnable = queue<Job>();
     this->completed = vector<Job>();
     this->workers = vector<thread>();
 }
@@ -34,12 +34,12 @@ void Scheduler::start() {
     for(int i=0; i< num_workers; i++){
 
         thread t = thread(&Scheduler::workerExecuteJob, this);
-        this->workers.push_back(std::move(t));
+        workers.push_back(std::move(t));
     }
 
     cout << "Simulation is starting...number of threads created: " << num_workers << endl;
 
-    // move jobs from ready to running
+    // move jobs from ready to runnable
     while(!ready.empty()){
 
         Job j = ready.top(); //get top element
@@ -47,9 +47,11 @@ void Scheduler::start() {
         //sleep until job is ready to start
         this_thread::sleep_for(chrono::milliseconds(j.getStart_time()));
 
-        //acquire running mutex
-        lock_guard<mutex> lock(this->running_mutex);
-        this->running.push(j);
+        //acquire runnable mutex
+        lock_guard<mutex> lg_r(mutex_runnable);
+        lock_guard<mutex> lg_cv(mutex_cv);
+        runnable.push(j);
+        cv_running_not_empty.notify_one();
 
         ready.pop(); //pop top element
     }
@@ -62,23 +64,29 @@ void Scheduler::workerExecuteJob() {
     thread::id tid = this_thread::get_id();
 
     //verify if a job can be executed, if not exit
-    running_mutex.lock(); //lock
+    mutex_runnable.lock(); //lock
 
-    while(!running.empty() || !ready.empty()){
+    while(!runnable.empty() || !ready.empty()){ //until there are jobs still to be finished
 
         Job j;
 
-        if(running.empty()){
-            running_mutex.unlock(); //unlock before sleep
-            this_thread::sleep_for(chrono::milliseconds(500));
-            running_mutex.lock(); //lock before while
-            continue;
-        } else {
-            j = running.front(); //get job from running queue
-            running.pop();
+        //wait for job to be available
+        while(runnable.empty()){
+            mutex_runnable.unlock();
+            unique_lock<mutex> ul(mutex_cv);
+            cv_running_not_empty.wait_for(ul, chrono::duration<int>(1), [this]()->bool{return !runnable.empty();}); //wait and release lock
+            mutex_runnable.lock();
+
+            if(runnable.empty() && ready.empty()){ //woke up but nothing to do left
+                mutex_runnable.unlock();
+                return;
+            }
         }
 
-        running_mutex.unlock(); //unlock after getting the job
+        //job available, get the job
+        j = runnable.front();
+        runnable.pop();
+        mutex_runnable.unlock();
 
         //perform the job (simulate it)
         int ms = min(j.getDuration()-j.getExecution_time(), time_quantum);
@@ -93,21 +101,22 @@ void Scheduler::workerExecuteJob() {
 
             j.setCompletion_time(0); //TODO
 
-            lock_guard<mutex> lock(this->completed_mutex);
+            lock_guard<mutex> lg(mutex_completed);
             cout << "Thread " << tid << " fully completed the job " << j.getId() << endl;
             completed.push_back(j);
 
         } else {
 
-            lock_guard<mutex> lock(this->running_mutex);
+            lock_guard<mutex> lg(this->mutex_runnable);
             cout << "Thread " << tid << " worked on the job " << j.getId() << endl;
-            running.push(j);
+            runnable.push(j);
+            cv_running_not_empty.notify_one(); //notify that a job can be run
         }
 
-        running_mutex.lock(); //lock before testing while
+        mutex_runnable.lock(); //lock before testing while
     }
 
-    running_mutex.unlock(); //unlock before exit
+    mutex_runnable.unlock(); //unlock before exit
     cout << "Thread " << tid << " is terminating" << endl;
 }
 

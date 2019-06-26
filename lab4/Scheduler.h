@@ -8,6 +8,7 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include "Job.h"
 
 using namespace std;
@@ -18,13 +19,15 @@ using namespace std;
 class Scheduler {
 
     priority_queue<Job, vector<Job>, GreaterThanByStartTime> ready; //the smallest one is the first of the queue
-    queue<Job> running;
+    queue<Job> runnable;
     vector<Job> completed;
     vector<thread> workers; //pool of thread that will execute the jobs
     const int time_quantum = 1000;
 
-    mutex running_mutex;
-    mutex completed_mutex;
+    mutex mutex_runnable;
+    mutex mutex_completed;
+    mutex mutex_cv;
+    condition_variable cv_running_not_empty;
 
     void workerExecuteJob();
 
