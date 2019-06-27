@@ -2006,69 +2006,429 @@ Il namespace `std::this_thread` offre un insieme di funzioni che permettono di i
 **Non usare queste funzioni per gestire la sincronizzazione.**
 
 
-# Applicazioni basate su interfacce grafiche
 
-UI composta da da Widget (liste, textbox, buttons ecc) che si prestano ad essere modellati in oggetti.
 
-Pattern di programmazione per la definizione di widget:
+# **Applicazioni basate su interfacce grafiche**
 
-* **Composite**: composizione di oggetti per ottenere oggetto complesso (strutturato ad albero)
-* **Template**
-* **Strategy**: demanda ad altri componenti la gestione di alcune caratteristiche, i.e. LayoutmManager in Android gestisce il Layout
+L'interazione è uno degli aspetti fondamentali da dover attenzionare quando si sviluppa un'applicazione, l'interazione deve risultare:
 
-L'architettura applicativa di un'applicazione basata su interfaccia grafica si basa su una coda di eventi, il main attende che si verifichi un evento, lo estrae dalla coda e lo invia alle funzioni che si sono registrati come gestori dell'evento (callback).
+* Efficace
+* Efficiente
+* Facile da imparare
+* Piacevole
 
-Questo implica che nella maggior parte dei casi, non occorre utilizzare più di un thread, il thread principale gestisce la coda ed esegue le callback: se questi eseguono codice bloccante, potrebbero verificarsi dei problemi.
+Un'interfaccia utente deve risultare comprensibile e coerente, mettendo in risalto l'informazione principale.
 
-In questi casi, si può spezzare l'esecuzione in più eventi, ed al termine di ogni callback inserire un nuovo evento in coda, oppure lanciare un nuovo thread, in quest'ultimo caso bisogna tenere conto del fatto che solo il thread principale può agire sull'albero dei widget (visual tree, **view**).
+## Pattern per la realizzazione di un'interfaccia grafica (UI)
+
+In un programma in cui l'utente interagisce tramite UI, l'interazione non è sequenziale, ne guidata dal programma stesso: l'utente può scegliere con quale componente interagire in un dato momento, in un ordine non prevedibile.
+
+Una UI è composta da da Widget (liste, textbox, buttons ecc) che si prestano ad essere modellati in oggetti, mettendoli in relazione l'un l'altro attraverso l'ereditarietà (i.e. button visto come una specializzazione di un textbox, aggiunge la possibilità di essere cliccato). Ogni framework grafico propone una propria gerarchia di classi e si basa su uno dei seguenti pattern di programmazione per la definizione dei widget:
+ 
+* **Composite**: composizione di oggetti per ottenere oggetto complesso (strutturato ad albero). I widget sono organizzati in strutture ricorsive ad albero, per rappresentare la relazione "parte-tutto", i.e. classe Window è specializzata in Group che a sua volta è specializzata in Image, Label e Button. 
+
+* **Template**: definisce la struttura generale di un algoritmo (in una classe "template"), demandando alcune operazioni alle sotto classi: queste possono adattare il proprio comportamento senza compromettere la struttura dell'algoritmo. I.e. FrameworkClass che ha come figlie ApplicationClass1 e ApplicationClass2 che fanno override di un metodo definito dalla classe template.
+  
+* **Strategy**: i widget demandano ad altri componenti la gestione di alcune funzionalità specifiche, i.e. LayoutManager in Android gestisce il Layout. Questo rende indipendenti gli algoritmi dalle classi che li utilizzano.
+
+## Architettura applicativa per il supporto dell'interazione
+
+L'architettura applicativa di un'applicazione basata su interfaccia grafica si basa su una **coda di eventi**, il main attende che si verifichi un evento (i.e. pressione tasto), lo estrae dalla coda e lo invia alle funzioni che si sono registrate come gestori dell'evento (callback). E' il sistema operativo ad inserire gli eventi nella coda.
+
+I diversi componenti dell'applicazione esprimono a priori il proprio interesse a ricevere determinati tipi di eventi, registrando opportuno funzioni che potranno essere invocate in futuro (callback).
+
+Nella maggior parte dei casi, non occorre utilizzare più di un thread, il thread principale gestisce la coda ed esegue le callback: se questi eseguono codice bloccante, potrebbero verificarsi dei problemi. Le callback vengono eseguite in modo sincrono dal thread principale, se una si blocca per un tempo lungo, il programma appare bloccate (non risponde all'interazione dell'utente).
+
+Per evitare ciò si può spezzare l'esecuzione in più eventi, ed al termine di ogni callback inserire un nuovo evento in coda, oppure lanciare un nuovo thread, in quest'ultimo caso bisogna tenere conto del fatto che **solo il thread principale può agire sull'albero dei widget** (visual tree, **view**).
+
+```
+1. inizializza il framework
+2. crea albero dei widget
+3. regista le callback
+4. esegui il ciclo degli eventi
+```
 
 Lo stato dell'applicazione è mantenuto dal **model**, e verrà aggiornato dalle callback, che hanno il ruolo di **controller**, modificando il modello. Le modifiche verranno rispecchiate dalla **view**. In questo modo viene implementato il pattern **MVC**.
 
+## Il pattern observer
 
-## Il framework Qt
+Per facilitare il compito della vista di mantenere aggiornate le proprie strututre dati al variare delle informazioni contenute nel modello, spesso si ricorre al pattern observer:
 
-meccanismo di comunicazione tra oggetti basato su segnali e slot che implementa il pattern observer/observable.
+* Il modello mantiene una lista di viste interessate ai suoi cambiamenti.
+* ogni volta che il modello cambia una parte del proprio stato, notifica tutte le viste al momento registrate del cambiamento avvenuto.
+* La vista reggisce alla notifica aggiornando il proprio contenuto.
 
-`QObject` è la classe padre della maggior parte delle classi di Qt, compresi tutti i `QWidget`. Il Meta Object Compiler (MOC) di Qt compila tutti i QObject in classi C++, dopo si può effettuare la compilazione del risultato utilizzando il compilatore standard.
+In alcune situazione, può essere necessario ricorrere ad un oggetto intermediario, detto **adapter**, che si registri come osservatore del modlel e, in base al suo contenuto, decida quali e quanti widget debbano dover far parte dell'albero delle viste (i.e. Adapter per la RecycleView di Android). Questo permette, in caso di viste contenenti molti widget, di limitare la struttura topologica dell'albero alle sole viste utili (quelle visibili all'utente).
 
-ogni applicazione Qt deve avere almeno un oggetto `QApplication` che gestisce la coda dei messaggi, il ciclo di vita, e l'albero dei widget.
 
-In Qt ogni QObject ha conoscenza del QThread in cui è stato creato.
+# **Il framework Qt**
 
-L'albero di elementi della UI è composto da derivati della classe `QWidget`, ogni albero corrisponde ad una finestra, ed ad un `QThread` (tutti gli elementi dell'albero devono appartenere allo stesso Qthread).
+Qt estende il C++ aggiungendo le seguenti funzionalità:
+
+* meccanismo di comunicazione tra oggetti basato su **segnali e slot** che implementa il pattern observer/observable.
+* un sistema di **properties** interrogabile ed estendibile
+* **eventi e filtri** di eventi
+* **internazionalizzazione** delle stringhe
+* **timer a intervalli** che rendono possibile implementare task non bloccanti
+* **organizzazione degli oggetti ad albero**, gerarchica e interrogabile
+* **puntatori gestiti (QPointer)**, automaticamente impostati a 0 quando l'oggetto referenziato viene distrutto
+* un meccanismo id **dynamic cast**
+
+### QObject
+
+`QObject` è la classe padre della maggior parte delle classi di Qt, compresi tutti i `QWidget`. Le responsabilità di questa classe sono di gestire la memoria, effettuare l'identificazione del tipo a runtime (introspezione) e gestire gli eventi. Non offre alcun meccanismo di garbage collection ma un sistema di trasferimento del possesso, analogamente agli smart pointer.
+
+Ogni istanza di un `QObject` può ricevere come argomento del proprio costruttore il puntatore ad un genitore. Il figlio informa il genitore della propria esistenza, che provvederà ad aggiungerlo alla lista dei propri figli.
+
+Gli oggetti che ereditano da `QObject` vengono normalmente **allocati nello heap**. Se viene loro assegnato un genitore, questi prende possesso dell'oggetto appena creato e ne chiama la delete quando necessario (può farlo perchè il padre ha il possesso - ha il puntatore - dei figli).
+
+```
+QLabel* label = new QLabel("42", parent_obj); 
+//oppure: label.setParent(parent_obj)
+```
+
+Gli oggetti che non ereditano da `QObject` sono invece allocato nello stack, i.e. `QStringList sl;`.
+
+Fanno eccezione `QFile`, `QApplication` ed i dialog che, pur ereditando da `QObject` vengono di solito allocati sullo stack.
+
+Quando un `Qobject` viene creato, ne viene impostata **l'affinità al thread** in cui tale operazione avviene, tutti i figli devono avere la stessa affinità del genitore.
+
+Il **Meta Object Compiler (MOC)** di Qt compila tutti i QObject in classi C++, dopo si può effettuare la compilazione del risultato utilizzando il compilatore standard.
+
+### QWidget
+
+La classe `QWidget` estende la semantica della relazione genitore-figlio: un figlio diventa anche un widget figlio, cioè viene mostrato nello stesso sistema di coordinate del genitore e limitato graficamente dai confini del genitore.
+
+Ad ogni oggetto si può associare un nome, ed utilizzare il nome per cercarlo all'interno dell'albero dei figli di un `QObject`:
+
+```
+// trova il figlio di tipo QPushButton chiamato button1
+QPushButton *button = parent->findChild<QPushButton*>("button1");
+
+// trova tutti i figli di tipo QPushButton
+QList<QPushButton*> allButtons = parent.findChildren<QPushButton*>();
+
+// trova tutti i figli di tipo QWidget e di nome "widgetname"
+QList<QWidget*> widgets = parent.findChildren<QWidget*>("widgetname");
+```
+
+Ogni elemento dell'albero della view è un'istanza di QWidget, ognuno di essi ocucpa un'area rettangolare, che è ritagliata all'interno del rettangolo del widget genitore.
+
+### QPointer
+
+`QPointer` è uno smart pointer specializzato per le istanza di `QObject` e derivati, internamente utilizza un weak_pointer, e quando l'oggetto a cui punta viene distrutto, viene posto automaticamente a zero.
+
+```
+QObject *obj = new QObject;
+QPointer<QObject> pObj(obj);
+delete obj;
+Q_ASSERT(pObj.isNull()); // true
+```
+
+`QSharedPointer` può puntare a qualsiasi tipo di dato: mantiene internamente un conteggio dei riferimenti, rilascia la memoria quando il contatore arriva a zero.
+
+
+### QVariant
+
+Simula il funzionamento di una union, in grado di contenere una molteplicità di dati diversi. Il metodo `type()` consente di conoscere il tipo di dato memorizzato.
+
+```
+QDataStream out(...);
+QVariant v(123);  // v contiene un intero
+int x = v.toInt();// x = 123
+out << v;  // Scrive un tag e un valore
+v = QVariant("hello"); // v contiene un QByteArray
+v = QVariant(tr("hello")); // v contiene una QString
+int y = v.toInt(); // y = 0
+QString s = v.toString(); // s = tr("hello")
+```
+
+### QString
+
+modella una sequenza di caratteri UTF-16, internamente è implementato attraverso un buffer allocato dinamicamente e condiviso con politica CoW.
+
+### Qt collections
+
+Qt fornisce un insieme di classi compatibili con quelle della STL di C++:
+
+* QList
+* QVector
+* QLinkedList
+* QQueue
+* QStack
+* QMap
+* ...
+
+Per scorrere gli elementi contenuti nei contenitori, sono offerti due tipi di iteratori, uno in stile STL, uno in stile Java: i primi sono più efficienti ma possono essere invalidati se si modifica il contenuto della collezione durante l'iterazione, i secondi mantengono una propria copia privata della collezione su cui poi iterano.
+
+```
+//Iteratori classici (stile STL)
+QVector<QString> data {"uno","due","tre"};
+for(auto it=data.begin(); it!= data.end(); it++) {
+  std::cout<< "+ " << it->toStdString() << "\n";
+}
+
+//Iteratori Java-like
+QVectorIterator<QString> it(data);
+while (it.hasNext()) {
+  std::cout << "- " << it.next().toStdString() << "\n";
+}
+```
+
+
+### QApplication
+
+Ogni applicazione Qt deve avere almeno un oggetto `QApplication` che gestisce la coda dei messaggi, il ciclo di vita, e l'albero dei widget. Deve essere creato prima di ogni altro componente grafico, tipicamente instanziato come variabile locale all'interno del main. Il metodo `exec()` esegue il ciclo dei messaggi.
 
 ```
 #include <QApplication>
 #include <QPushButton>
 
-int main (int argc, char** argv){
-	QApplication app(argc, argv); //inizializza il framework
-	QPushButton* b = new QPushButton("Hello Qt!"); //radice dell'albero
-	b->show(); //mostra l'albero
-	return app.exec(); //ciclo dei messaggi
+int main(int argc, char** argv) {
+  QApplication app(argc, argv);  // inizializzazione di Qt
+
+  QPushButton b ("Hello QT!"); // radice dell'albero
+  b.show();  // mostra l'albero(!) delle viste
+
+  return app.exec();  // ciclo dei messaggi
 }
 ```
 
+In Qt ogni QObject ha conoscenza del QThread in cui è stato creato.
+
+L'albero di elementi della UI è composto da derivati della classe `QWidget`, ogni albero corrisponde ad una finestra, ed ad un `QThread`: **tutti gli elementi dell'albero devono appartenere allo stesso Qthread**.
+
+
+### QMainWindow
+
 `QMainWindow` semplifica la creazione di una GUI fornendo un layout standard in cui ospitare i widget di una QApplication.
 
-Gli oggetti posso interagire tra di loro, ad esempio per gestire l'aggiornamento della vista, attraverso un meccanismo basato su `signal` e `slot`.
+```
+#include <QApplication>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QStatusBar>
+#include <QMainWindow>
+
+int main(int argc, char** argv) {
+    QApplication app(argc,argv);
+    QMainWindow mainWindow();
+
+    QPushButton* button = new QPushButton("Run");
+
+    mainWindow.setCentralWidget(button);
+
+    QStatusBar* bar=new QStatusBar();
+    bar->showMessage("Idle...");
+    mainWindow.setStatusBar(bar);
+
+    mainWindow.show();
+    return app.exec();
+}
+```
+
+La classe QWidget demanda alla classe `QLayout` la strategia di disposizione degli elementi del sotto albero della view (quello del QWidget e dei suoi figli) sullo schermo. QLayout negozia con i figli dimensioni e posizione. Sono disponibili specifiche specializzazioni di QLayout che supportano diversi algoritmi di ordinamento dei QWidget:
+
+* QBoxLayout
+* QFormLayout
+* QGridLayout
+* QstackedLayout
+* ...
+
+### QDialog
+
+I dialog vengono creati combinando vari widget, possono essere allocati sullo stack, un dialog modale restituisce un flag (risposta: true/false).
+
+## Il Model/View pattern
+
+Alcuni tipi di widget sono specializzati per visualizzare collezioni di dati: liste, tabelle, alberi.
+
+Il pattern Model/View prevede la fusione del controller nella view, in modo da ottenere una struttura più semplice da gestire.
+
+* il modello nasconde i dati dalla view e dai delegate.
+* la view usa il delegate per visualizzare e modificare i dati.
+
+
+## Meta-Object System (MOS)
+
+Qt mantiene all'interno degli oggetti del framework un sistema di meta-informazioni per classi e tipi che **permette l'estensione del linguaggio C++**:
+
+* abilita i meccanismi di signal e slot per la comunicazione tra oggetti
+* implementa le proprietà dinamiche
+* consente di fare cast type-safe a runtime, senza il supporto del compilatore
+* permette la serializzazione/deserializzazione a tipi arbitrari
+
+Gli elementi che permettono di implementare questo sistema sono:
+
+* la **classe QOBject**, da cui derivano tutti gli oggetti che fanno uso del MOS.
+* la **macro Q_OBJECT**, inserita nella sezione privata della dichiarazione di una classe serve a segnalare che la classe necessita del supporto del MOS.
+* il **Meta-Object Compiler**, che fornisce a tutte le sottoclassi di QObject in cui è presente la macro il codice necessario per l'implementazione delle funzionalità sopra citate.
+
+Il MOC è il cuore di questo sistema, permette l'estensione dello standard del C++ con i concetti di signal, slot e properties, ed abilita i meccanismi di:
+
+* **introspezione dei tipi**: consente di esaminare il tipo, i metodi, e le proprietà  di un oggetto in fase di esecuzione.
+* **riflessione**: va un passo oltre l'introspezione, consentendo ad un oggetto di modificare durante l'esecuzione la propria struttura e il proprio comportamento.
+
+Il MOC non modifica il codice sorgente, ma genera per le classi che contengono la macro Q_OBJECT, file C++ aggiuntivi con estensione `.moc`, questi sono responsabili della definizione del `QMetaObject` relativo alla classe, che contiene tutte le informazioni necessarie per supportare l'introspezione e la riflessione. Questi vengono poi compilati assieme al resto dei sorgenti, o inclusi a valle della definizione della classe.
+
+La classe `QMetaObject` non è strettamente necessaria per la realizzazione di applicazioni, è utile per realizzare meta-applicazioni basate su scripting engine o designer di GUI. I metodi generalmnete più utilizzati sono:
+
+* `className()`, ritorna il nome della classe
+* `superclass()`, restituisce il meta-object della superclasse
+* `method` e `methodCount()` forniscono informazioni riguardanti i meta-metodi della classe (i.e. signal e slot).
+* `property()` e `propertyCount()` forniscono informazioni sulle property della classe.
+
+La classe `QMetaType` è usata da Qt per rendere disponibili le informazioni sui tipi a runtime.
+
+
+## Gestire l'interazione: Signal e slot
+
+Gli oggetti posso interagire tra di loro, ad esempio per gestire l'aggiornamento della vista, attraverso un meccanismo basato su `signal` e `slot` che implementano il pattern observer.
 
 Un `signal` è un particolare metodo presente all'interno di una classe Qt, che viene implementato dal MOC, Meta Object Compiler, di Qt. E' possibile emettere un signal utilizzando il metodo `emit()`.
 
 Gli `slot` sono dei metodi che possono essere chiamati quando vengono connessi ad un signal, attraverso la funzione statica `connect()` offerta da QObject, la funzione è **sincrona**.
 
+```
+class Model: public QObject {
+  Q_OBJECT // macro for the MOC
+  int count, min, max;
+public:
+  Model(int v, int min=0, int max=100): 
+     count(v), min(min), max(max) { }
+
+public slots:
+  void countUp() { 
+	if (count<max) {
+    	count++; 
+		emit changed(count); 
+	} 
+  }
+  
+  void countDown() { 
+    if (count>min) {
+   	   	count--; 
+		emit changed(count); 
+	} 
+  }
+
+signals:
+  void changed(int newValue);
+};
+```
+
+Quando un oggetto intende far sapere al resto del sistema che al proprio interno si è verificato un cambiamento, può **emettere uno dei propri segnali**, attraverso l'operatore `emit signalName()`.
+
+Se, viceversa, **un oggetto vuole reagire ad un cambiamento esterno in un altro oggetto**, esso può implementare tale comportamento in uno dei propri slot. Una opportuna funzione statica, la `QObject::connect()` permette di collegare dinamicamente signal e slot di oggetti differenti.
+
+Ogni volta che un oggetto emettera un segnale, tutti gli slot che sono stati collegati al segnale saranno eseguiti.
+
+```
+void main(int argc, char**argv) {
+  Qapplication app(argc,argv);
+
+  QPushButton* b = new QPushButton("+");
+  Model* model = new Model(0,0,100);
+  QLabel *l = new QLabel("0");
+  
+  QObject::connect(b, &QPushButton::clicked, model, &Model::countUp);
+  QObject::connect(model, &Model::changed,
+        [=](int v) { 
+			l->setText(Qstring::number(v));
+		}
+  );
+
+  b->show();
+  app.exec();
+}
+```
+
+Una nuova sintassi per signal e slot è stata introdotta nelle versioni recenti di Qt.
+
+vantaggi:
+
+* check in fase di compilazione dell'esistenza di signal, slot e Q_OBJECT
+* cast automatico dei tipi
+* è possibile connettersi non solo a slot a ma a qualunque funzioni membro di QObject, a funzioni qualcnque ed ad espressioni lambda (funtori/oggetti funzionali).
+
+svantaggi:
+
+* gli argomenti di default negli slot non sono più supportatinon c'è disconnessione automatica da una funzione semplice (senza Q_OBJECT) quando il ricevente viene distrutto (va chiamata `disconnect()`).
+
+```
+QMetaObject::Connection m_conn;
+
+// nuova connessione functor-based
+m_conn = connect(sender, &Sender::valueChanged, receiver, &Receiver::updateValue);
+
+// nuova connessione functor-based, funzione qualunque senza Q_OBJECT m_conn = connect(sender, &Sender::valueChanged, someFunction);
+
+// nuova connessione functor-based, funzione lambda
+m_conn = connect(sender, &Sender::valueChanged, 
+	 [=](const QString &newValue) {
+	     receiver->updateValue("senderValue", newValue);
+	 }
+); 
+
+// nuova disconnect, simmetrica a connect functor-based
+disconnect(sender, &Sender::valueChanged, receiver, &Receiver::updateValue); 
+
+// nuova disconnect che fa uso di QMetaObject
+QObject::disconnect(m_conn);
+```
+
 Quando si collegano due QObject attraverso signal/slot, non c'è bisogno che i due QObject appartengano allo stesso QThread.
 
-Gli eventi sono oggetti derivati dalla classe astratte `QEvent`: `QMouseEvent`, `QResizeEvent`, `QPaintEvent` ecc. Questi eventi possono essere scatenati sia da attività esterne (interazione dell'utente) o da cambiamenti avvenuti all'interno dell'apllicazione.
+
+## Gestione degli eventi
+
+Gli eventi sono oggetti derivati dalla classe astratte `QEvent`: `QMouseEvent`, `QResizeEvent`, `QPaintEvent` ecc. Questi eventi possono essere scatenati sia da attività esterne (interazione dell'utente) o da cambiamenti avvenuti all'interno dell'applicazione.
 
 Gli eventi sono inseriti all'interno di una coda, in Windows, la coda è gestita dal sitema operativo e non è accessibile dall'applicazione Qt.
 
-Gli eventi possono essere generati da `sendEvent()` o `postEvent()` (meglio quest'ultimo che non è rientrante) e sono ricevuti dal metodo `event()` del QObject.
+Gli eventi possono essere generati da `sendEvent()` o `postEvent()` (meglio quest'ultimo che non è rientrante) e sono ricevuti dal metodo `event()` del QObject, che si occuperà di fare il dispatch verso il gestore effettivo (i.e. `KeyPress()`) sulla base del tipo dell'evento, che s può ottenere attraverso il metood `type()`.
+
+Il loop degli eventi inizia con la chiamata ad `exec()` e termina con la chiamata a `quit()`.
 
 `QCoreApplication` e `QGuiApplication` sono le classi che forniscono un loop degli eventi per le applicazioni Qt. Esiste una sola istanza di queste classi per una applicazione Qt.
 
+Qt offre particolari metodi per la gestione di **eventi di ridisegno** ed **eventi periodici**.
 
-# Interprocess Communication
+
+## Qt build system
+
+Qt mette a disposizione tre strumenti:
+
+* MOC: meta-object compiler
+* UIC: user interface compiler, traduce la definizione XML della UI in header C++
+* RCC: resource compiler, genera codice C++ per incorporare risorse binarie nelle applicazioni Qt (i.e. immagini, icone). I nomi delle risorse su disco vanno elencati in un Resource Collection File con estensione `.qrc`.
+
+Processo di compilazione di un programma Qt:
+
+* `qmake -project`, crea un Qt project file `.pro`
+* `qmake` legge il project file e produce in output un Makefile specifico per la piattaforma, genera le make rules per invocare MOC per gli header file contenenti la macro Q_OBJECT
+* `make` compila il programma, utilizzando il Makefile, per la piattaforma specifica. Esegue anche MOC, UIC ed RCC. 
+
+## Integrazione con il sistema sottostante
+
+La classe `QSettings` permette di conservare le impostazioni dell'applicazione nella maniera nativa della piattaforma:
+
+* Windows: `HKEY_CURRENT_USER\Software\organization\application`
+* Linux: `$HOME/.config/organization/application.conf`
+
+La classe `QSystemTrayIcon` permette di integrare la propria applicazione con la system tray e l'area di notifica della shell del sistema operativo.
+
+La classe `QDesktopServices` permette di accedere a servizi come l'apertura di una pagina web in una webview o a locazioni standard del file system.
+
+## Esecuzione in backgroup
+
+Qt fornice due API per ll supporto dell'elaborazione in background:
+
+* `QThread` permette di creare e gestire thread.
+* `QtConcurrent` consente di usre la programmazione concorrente a più alto livello, ignorando i dettagli riguardanti la sincronizzazione.
+
+
+
+# **Processi ed IPC**
 
 La programmazzione multi processo porta con se il problema della gestione della comunicazione tra i vari processi.
 
