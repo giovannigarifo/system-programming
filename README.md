@@ -2419,61 +2419,85 @@ La classe `QSystemTrayIcon` permette di integrare la propria applicazione con la
 
 La classe `QDesktopServices` permette di accedere a servizi come l'apertura di una pagina web in una webview o a locazioni standard del file system.
 
-## Esecuzione in backgroup
+## Esecuzione in background
 
 Qt fornice due API per ll supporto dell'elaborazione in background:
 
 * `QThread` permette di creare e gestire thread.
-* `QtConcurrent` consente di usre la programmazione concorrente a più alto livello, ignorando i dettagli riguardanti la sincronizzazione.
+* `QtConcurrent` consente di usare la programmazione concorrente a più alto livello, permette di ignorare i dettagli riguardanti la sincronizzazione.
 
 
 
 # **Processi ed IPC**
 
-La programmazzione multi processo porta con se il problema della gestione della comunicazione tra i vari processi.
+La programmazzione multi processo porta con se il problema della **gestione della comunicazione tra i vari processi**.
 
-L'uso dei thread permette di sfruttare i processori multithread, ma presentano lo svantaggio di avere uno spazio di indirizzamento condiviso tra tutti i processi. Ci sono situazioni in cui la presenza di un singolo spazio di indirizzamento non è possibile o desiderabile: 
+L'uso dei thread permette di sfruttare i processori multithread, ma presentano lo svantaggio di avere uno **spazio di indirizzamento condiviso tra tutti i flussi di esecuzione**. Ci sono situazioni in cui la presenza di un singolo spazio di indirizzamento non è possibile o desiderabile: 
 
-* sicurezza, i.e. chrome crea un processo per ogni tab.
-* scalabilità, programmi eseguiti su macchine distinte che comunicano a livello di processo tra loro.
+* **sicurezza**, i.e. chrome crea un processo per ogni tab.
+* **scalabilità**, programmi eseguiti su macchine distinte che comunicano a livello di processo tra loro (i.e. Hadoop).
+* **riuso**, riutilizzo di programmi già esistenti per la gestione di task comuni.
 
 I processi creati a partire da un processo genitore devono essere in grado di operare e cooperare tra di loro indipendentemente dalla loro genesi.
 
-Ad ogni processo è associato almeno un thread (primary thread): un sistema multiprocesso è instrinsecamente concorrente, solleva gli stessi problemi della programmazione multithread, rendendone più difficile la gestione per via dlela mancanza di uno spazio di indirizzamento condiviso (i.e. appoggiarsi su variabili globali è impossibile).
+Ad ogni processo è associato almeno un thread (primary thread): **un sistema multiprocesso è instrinsecamente concorrente**, solleva gli stessi problemi della programmazione multithread, rendendone più difficile la gestione per via della mancanza di uno spazio di indirizzamento condiviso (i.e. appoggiarsi su variabili globali protette da mutex è impossibile).
 
 
 ## Processi in Windows
 
-In windows `CreateProcess()` permette di creare un processo, il nuovo processo conosce qual'è il processo che l'ha creato, ma non ci sono dipendenze esplicite. Questa funzione:
+In windows i processi costituiscono entità separate, senza relazioni di dipendenza esplicita tra essi.
 
-* crea un nuovo spazio di indirizzamento
-* lo inizializza con l'immagine di un `.exe` scritto secondo la sintassi `PE2`
-* attiva il thread primario utilizzando la runtime library del C++.
+`CreateProcess()` permette di creare un processo, il nuovo processo conosce qual'è il processo che l'ha creato, ma non ci sono dipendenze esplicite. Questa funzione:
 
-Questo nuovo processo figlio, può condividere variabili d'ambiente, handle a file, semafori, pipe del processo padre, ma non può condividere handle a thread, processi, librerie dinamiche, e regioni di memoria.
+* crea un nuovo **spazio di indirizzamento**
+* **lo inizializza** con l'immagine di un programma in formato `.exe` scritto secondo la sintassi `PE2` (Portable Executable 2)
+* **attiva il thread primario** utilizzando la runtime library del C++.
+
+Questo nuovo processo figlio **può condividere** con il padre variabili d'ambiente, handle a file, semafori, pipe del processo padre, ma **non può condividere** handle a thread, processi, librerie dinamiche, e regioni di memoria.
 
 ## Processi in Linux
 
 Si crea un processo con l'operazione `fork()`: crea un nuovo spazio di indirizzamento identico a quello del processore genitore, secondo la politica Copy-On-Write. Fork ritorna al processo padre il PID del figlio, al figlio ritorna 0, può ottenere il PID del padre attraverso la funzione `getpid()`.
 
-La famiglia di funzioni `exec*()` sostituiscono l'attuale immagine di memoria dello spazio di indirizzamento del processo che chiama la funzione. Permette ad esempio al figlio di eseguire un nuovo eseguibile.
+La famiglia di funzioni `exec*()` sostituiscono l'attuale immagine di memoria (l'eseguibile) dello spazio di indirizzamento del processo che chiama la funzione. Permette ad esempio al figlio di eseguire un nuovo eseguibile.
+
+```
+int main ( const int argc, const char* const argv[] ) {
+    pid_t ret = fork();
+    switch (ret) {
+	case -1:
+	   puts( "parent: error: fork failed!" );break;
+    case  0:
+	   puts( "child: here (before execl)!" );
+	   if (execl( "./ch.exe", "./ch.exe", 0 ) == -1) //exec
+		perror( "child: execl failed:" );
+	   puts( "child: here (after execl)! how the f*ck am I here!?" ); 
+	   //non si dovrebbe arrivare qui
+ 	   break;
+    default:
+		printf( "par: child pid=%d \n", ret );
+		break;
+    }
+ return 0;
+}
+```
 
 ### Fork e Thread in linux
 
 nel caso di programmi concorrenti, l'esecuzione di `fork()` crea un problema:
 
-* il processo figlio conterrà un solo thread, anche se il padre avesse creato più di un thread.
+* **il processo figlio conterrà un solo thread, anche se il padre avesse creato più di un thread.**
 
 Cosa succede se mentre avviene la creazione di un processo, uno dei thread del padre modificano l'area di memoria indirizzata dal processo? Gli oggetti di sincronizzazione (mutex ecc..) presenti nel padre possono trovarsi in stati incongruenti.
 
-La funzione `int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void));` accetta  tre puntatori a funzione (handlers), permette di eseguire una fork thread-safe. In caso di fork:
+La funzione `int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void));` accetta  tre puntatori a funzione (handlers), permette di eseguire le chiamate a fork in modo thread-safe. In caso di chiamata ad una fork:
 
-* prima dell'esecuzione di fork viene eseguita la **prepare**, dovrebbe fare in modo che i thread esistenti rilascino le risorse. Una delle possibili soluzioni è che tutti i mutex vengano acquisiti da prepare. 
+* prima dell'esecuzione di fork viene eseguita la **prepare**, dovrebbe fare in modo che i thread esistenti rilascino le risorse. Una delle possibili implementazioni è che tutti i mutex vengano acquisiti da prepare. 
 * Avviene la creazione del processo.
-* Viene eseguita dal padre la parent, fa il duale della prepare: rilascia tutti i mutex
-* Nel processo figlio viene eseguita la child, fa il duale della prepare come per parent.
+* Viene eseguita dal padre la **parent**, fa il duale della prepare: rilascia tutti i mutex
+* Nel processo figlio viene eseguita la **child**, fa il duale della prepare come per parent.
 
-In questo modo sia il processo padre che figlio continueranno la loro esecuzione, avendo rilasciato tutti i mutex, e quindi l'esecuzione può continuare in uno stato noto e predicibile.
+In questo modo sia il processo padre che figlio continueranno la loro esecuzione in uno stato congruo e predicibile (tutti i mutex liberi).
 
 ## IPC
 
@@ -2481,12 +2505,12 @@ Il SO impedisce il trasferimento diretto di dati tra due processi (conseguenza d
 
 L'IPC permette:
 
-* sincronizzazione delle attività tra processi
-* scambio di dati tra processi
+* **sincronizzazione** delle attività tra processi differenti
+* **scambio di dati** tra processi
 
 Indipendentemente dal tipo di meccanismo adottato per l'implementazione dell'IPC, occorre adattare le informazioni scambiate, così da renderle comprensibili al destinatario: i.e., i puntatori non hanno significato se lo spazio di indirizzamento cambia.
 
-**Rappresentazione esterna**: formato intermedio che permette la rappresentazione di strutture dati arbitrarie, sostituendo i puntatori con riferimenti indipendenti dalla memoria.
+**Rappresentazione esterna**: formato intermedio che permette la rappresentazione di strutture dati arbitrarie, **sostituendo i puntatori con riferimenti indipendenti dalla memoria**.
 
 Due strade possibili per rappresentare esternamente il testo:
 
@@ -2499,29 +2523,32 @@ Il passaggio da rappresentazione interna a rappresentazione è detta **serializz
 
 ### Code di messaggi
 
-code di messaggi: permettono l'invio di messaggi asincroni tra due o più processi, permette quindi scambio di dati ma anche sincronizzazione, dato che la ricezione e successiva lettura di un messaggio mette al corrente il processo che qualche cosa (che ha scatenato l'invio del messaggio) si è verificata.
+Permettono l'invio di messaggi asincroni tra due o più processi, permette quindi scambio di dati ma anche sincronizzazione, dato che la ricezione e successiva lettura di un messaggio mette al corrente il processo che qualche cosa (che ha scatenato l'invio del messaggio) si è verificata nell'altro processo.
 
 Permettono il trasferimento atomico di blocchi di byte, comportamento FIFO.
 
-* serializzazione
-* push nella coda
-* deserializzazione
+* serializzazione (rappresentazione interna -> rappresentazione esterna)
+* push nella coda (attraverso API del SO)
+* deserializzazione (rappresentazione esterna -> rappresentazione interna)
 
 ### Pipe
 
-Permettono il trasferimento di sequenze di byte di dimensioni arbitrarie tra due processi, occorre inserire marcatori che consentano di delimitare i singoli messaggi, i.e. formato TLV.
+Permettono il trasferimento di sequenze di byte di dimensioni arbitrarie tra due processi:
+
+* occorre inserire marcatori che consentano di delimitare i singoli messaggi, i.e. formato TLV.
+* comunicazione sincrona 1-1
 
 ### Memoria condivisa
 
-permette di avere uno spazio di memoria indirizzato tra due processi. Occorre sincronizzare l'accesso all'area condivisa, ad esempio utilizzando un Semaforo.
+permette di avere uno spazio di memoria indirizzato tra due processi. Occorre sincronizzare l'accesso all'area condivisa, ad esempio utilizzando un Semaforo (permette sincronizzazione a livello di SO ta più processi).
 
-Sincronizzazione tra processi attraverso semafori:
+Sincronizzazione tra processi attraverso **semafori**:
 
 * costrutto di sincronizzazione a basso livello, basato sulla manipolazione atomica di un valore intero.
-* Il valore è festito dal SO e non può mai diventare negativo
-* Il valore è modificato utilizzando due funzioni atomiche (P() e V())
+* Il valore è gestito dal SO e non può mai diventare negativo
+* Il valore è modificato utilizzando due funzioni atomiche (P()/up() incrementa il valore e V()/down() lo decrementa o si blocca in attesa di un incremento)
 
-Un semaforo inizializzato ad 1 può essere visto come un mutex. **La differenza con il mutex è che il semaforo non ha conoscenza di chi sia il suo possessore.**
+Un semaforo inizializzato ad 1 può essere visto come un mutex utilizzabile da più processi. **La differenza con il mutex è che il semaforo non ha conoscenza di chi sia il suo possessore.**
 
 ### Altro
 
@@ -2529,19 +2556,21 @@ File, Database, Socket, segnali unix.
 
 ## Identità e scelta dei canali di comunicazione
 
-Il SO su richiesta dei singoli processi può creare canali di comunicazione, come visto sopra. Ad ogni canale è associato un **identificativo univoco a livello di sistema detto handle**. I processi che cooperano devono accordarsi sul tipo e l'identità del canale usato per la comunicazione
+Il SO su richiesta dei singoli processi può creare canali di comunicazione tra quelli elencati sopra. Ad ogni canale è associato un **identificativo univoco a livello di sistema detto handle**. I processi che cooperano devono accordarsi sul tipo e l'identità del canale usato per la comunicazione
 
 Fattori che influenzano la scelta del canale di comunicazione:
 
-* relazione tra i processi: se ci sono dipendenze padre-figlio, una pipe ha senso. Se non ci sono dipendenze, non è possibile condividere handle.
-* comunicazione mono/bi-direzionale? 
-* Numero di procesi coinvolti
+* **relazione e dipendenza tra i processi**: se ci sono dipendenze padre-figlio, una pipe ha senso. Se non ci sono dipendenze, non è possibile condividere handle.
+* **comunicazione mono/bi-direzionale**? 
+* **Numero di procesi coinvolti*
 * Comunicazione tra macchine diverse? una sola soluzione: socket.
 
 
 ## IPC in Windows
 
-Win32 offre meccanismi di sincronizzazione che permettono di bloccare un thread fino a quando non si sia verificata una condizione in un altro thread, sfruttando l'uso di oggetti kernel condivisi, il kernel permette un accesso controllato al loro stato, permettendo a thread appartenenti a processi differenti di modificarne lo stato.
+Win32 offre meccanismi di sincronizzazione che permettono di bloccare un thread fino a quando non si sia verificata una condizione in un altro thread, sfruttando l'uso di **oggetti kernel condivisi**, il kernel permette un **accesso controllato al loro stato**, permettendo a thread appartenenti a processi differenti di modificarne lo stato.
+
+Rispetto ai costrutti di sincronizzazione intra-processo, sono più generali ma meno efficienti: presentano tempi di blocco/sblocco maggiori,
 
 Questa API espone due metodi:
 
@@ -2562,24 +2591,30 @@ closeHandle(handle);
 
 La maggior parte degli oggetti kernel può trovarsi in due stati:
 
-* segnalato
-* non segnalato
+* **segnalato**
+* **non segnalato**
 
 Nel caso di processi e thread lo stato non segnalato indica che l'elaborazione è ancora in corso, una volta raggiunto lo stato segnalato, non è possibile tornare indietro.
 
-### Tipi di oggetti kernel condivisi
+Il kernel NT può gestire questi **oggetti kernel** per la IPC:
 
-Il kernel NT può gestire questi oggetti kernel per la IPC:
+### Eventi
 
-* **Eventi**: imitano la semantica di una condition variable. La condizione è segnalata esplicitamente dal programmatore tramite opportuni metodi. Gli eventi di tipo manual-reset permettono ad un numero indefinito di thread in attesa di svegliarsi. Ci si collega ad un evento tramite `createEvent()` o `openEvent()`. Si modifica il loro stato attraverso `SetEvent()`, `ResetEvent()`, `PulseEvent()`, il loro comportamento varia in base al fatto che l'evento sia marcato come `AUTO_RESET` o un `MANUAL_RESET`.
-  
-* **Semafori**: mantengono al proprio interno un contatore, stato segnalato se valore amggiore di zero, non segnalato se è a zero. Non può valere meno di zero, la `wati()` si blocca se il contatore è a zero.
+Imitano la semantica di una condition variable. La condizione è segnalata esplicitamente dal programmatore tramite opportuni metodi. Gli eventi di tipo manual-reset permettono ad un numero indefinito di thread in attesa di svegliarsi. Ci si collega ad un evento tramite `createEvent()` o `openEvent()`. Si modifica il loro stato attraverso `SetEvent()`, `ResetEvent()`, `PulseEvent()`, il loro comportamento varia in base al fatto che l'evento sia marcato come `AUTO_RESET` o un `MANUAL_RESET`.
 
-* **Mutex**: simile a quelli del C++ (recursive mutex) ma questi sono oggetti kernel per l'IPC, completamente diversi. Assicurano l'accesso in mutua esclusione ad una risorsa del sistema.
+### Semafori
+
+Mantengono al proprio interno un contatore, stato segnalato se valore maggiore di zero, non segnalato se è a zero. Non può valere meno di zero, la `wait()` si blocca se il contatore è a zero.
+
+### Mutex
+
+Simile a quelli del C++ (recursive mutex) ma questi sono oggetti kernel per l'IPC, completamente diversi. Assicurano l'accesso in mutua esclusione ad una risorsa del sistema.
 
 NOTA: più oggetti kernel possono essere utilizzati congiutamente per implementare politiche di sincronizzazione avanzate, i.e. utilizzare un evento ed un mutex per evitare deadlock nell'acquisizione di una risorsa (e.g. file mapping).
 
-* **Mailslot**: coda di messaggi asincrona per la comunicazion tra processi, anche su macchine diverse, sulla stessa rete. 
+### Mailslot
+
+Coda di messaggi asincrona per la comunicazion tra processi, anche tra macchine diverse, sulla stessa rete. 
 
 	Si crea un mailslot server associandole un nome univoco:
 
@@ -2593,9 +2628,13 @@ NOTA: più oggetti kernel possono essere utilizzati congiutamente per implementa
 
 NOTA: è sempre necessario rilasciare il possesso dell'oggetto kernel attraverso la chiamata a `CloseHandle()` per evitare memory leak.
 
-* **Pipe**: anonymous (monodirezionali), named (possono essere bidirezionali).
+### Pipe
 
-* **FileMapping**: adatto a condividere ampie zone di memoria. 
+Anonymous (monodirezionali), named (possono essere bidirezionali).
+
+### FileMapping
+
+Adatto a condividere ampie zone di memoria. 
 
 	`CreateFileMapping()` permette di creare un file mapping.
 	`MapViewOfFIle()` restituisce un puntatore all'inizio del file mappato.
@@ -2603,14 +2642,18 @@ NOTA: è sempre necessario rilasciare il possesso dell'oggetto kernel attraverso
 
 	Tutti questi metodi NON gestiscono la sincronizzazione. E' necessario quindi utilizzarli congiutamente ad un mutex per garantire l'accesso esclusivo alla risorsa.
 
-* **Socket**: permettono comunicazione tra macchine dotate di sistemi operativi differenti, dato che opera a livello rete. Supportano solo il trasferimento di array di byte.
+### Socket
 
-* **Remote Procedure Call**: peste.
+Permettono comunicazione tra macchine dotate di sistemi operativi differenti, dato che opera a livello rete. Supportano solo il trasferimento di array di byte.
+
+### Remote Procedure Call
+
+Peste.
 
 
 ## IPC in Linux
 
-Ciascuna struttura IPC è identificata nel SO da un intero non negativo: all'atto della creazione di un oggetto IPC, si fornisce una chiave, il SO converte questa chiave nell'ID associato (un file descriptor). Un processo può creare una nuova struttura IPC con chiave divers da zero: tutti i processi che conoscono la chiave possono ottenere l'ID corrispondente.
+Ciascuna struttura IPC è identificata nel SO da un **intero non negativo** (file descriptor): all'atto della creazione di un oggetto IPC, si fornisce una chiave, il SO converte questa chiave nell'ID associato (un file descriptor). Un processo può creare una nuova struttura IPC con chiave diversa da zero: tutti i processi che conoscono la chiave possono ottenere l'ID corrispondente.
 
 L'ultimo processo che fa accesso ad una struttura dati IPC deve occuparsi della rimozione della stessa, altrimenti esso continuerà ad essere un oggetto kernel valido.
 
@@ -2618,7 +2661,7 @@ La chiave può essere creata utilizzando la funzione `ftok()`, che genera la chi
 
 ### Message queues
 
-Permettono lo scambio di messaggi tra processi. I messaggi sono composti da un tipo e da un payload, il processo che riceve può specificare il tipo die messaggi a cui è interessato.
+Permettono lo scambio di messaggi tra processi. I messaggi sono composti da un tipo e da un payload, il processo che riceve può specificare il tipo dei messaggi a cui è interessato.
 
 ```
 struct message {
@@ -2627,7 +2670,7 @@ struct message {
 }
 ```
 
-Per creare una messageque esiste il metodo `int mesgget(key_t key, int msgflg)` che restituisce l'id della message queue associata alla chiave specificata.
+Per creare una message queue esiste il metodo `int mesgget(key_t key, int msgflg)` che restituisce l'id della message queue associata alla chiave specificata.
 
 Per inviare un messaggio, esiste il metodo `int msgsnd(int msqid, const void* msgp, size_t msgz, int msgflgs)`. 
 
@@ -2637,9 +2680,9 @@ Per controllare la coda, esiste la funzione `msgctl` che accetta vari parametri.
 
 ### Pipe
 
-`pipe()` restituisce un array di dimensione due in cui il primo elemento rappresenta il punto di ingresso, il secondo il punto di uscita. Utile crearle prima della fork, poi padre e figlio utilizzano la pipe.
+`pipe()` restituisce un array di dimensione due in cui il primo elemento rappresenta il punto di ingresso, il secondo il punto di uscita. Utile crearle prima della fork, poi padre e figlio utilizzano la pipe secondo il protocollo scelto dal programmatore.
 
-Le named pipe sono creato con `mkfifo()`.
+Le named pipe sono create con `mkfifo()`.
 
 ### Shared memory
 
