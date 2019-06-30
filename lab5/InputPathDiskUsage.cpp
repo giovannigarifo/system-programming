@@ -3,6 +3,7 @@
 //
 
 #include "InputPathDiskUsage.h"
+#include "Model.h"
 
 InputPathDiskUsage::InputPathDiskUsage(QWidget *parent) : QWidget(parent) {
 
@@ -10,7 +11,11 @@ InputPathDiskUsage::InputPathDiskUsage(QWidget *parent) : QWidget(parent) {
 
     pieChart = new QChart(); //TODO: take a parent different from QWidget
     pieChart->addSeries(series);
-    pieChart->setTitle("Disk Usage for the input path");
+
+    partialTitle = "Disk Usage for: ";
+    partialTitle.append(Model::getModel()->getInputPath());
+
+    pieChart->setTitle(partialTitle);
     pieChart->setAnimationOptions(QChart::SeriesAnimations);
 
     pieChartView = new QChartView(pieChart, this);

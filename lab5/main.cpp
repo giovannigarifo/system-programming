@@ -12,6 +12,7 @@
 #include "InputPath.h"
 #include "WholeDiskUsage.h"
 #include "InputPathDiskUsage.h"
+#include "Model.h"
 
 //TODO: aggiungere i `.h` in add_executable in cmakelists
 
@@ -23,9 +24,16 @@ int main(int argc, char** argv) {
     // initialize Qt
     QApplication app(argc, argv);
 
-    // root of view tree
+    // creates root component
     QWidget *window = new QWidget();
 
+    // get model
+    Model* model = Model::getModel();
+    model->setParent(window);
+
+    /**
+     * Creates view components
+     */
     // bar chart for disk usage
     WholeDiskUsage* wdu = new WholeDiskUsage(window);
 

@@ -17,6 +17,7 @@ class InputPathDiskUsage : public QWidget{
     Q_OBJECT
 
 private:
+    QString partialTitle;
     QPieSeries* series;
     QChart* pieChart;
     QChartView* pieChartView;
