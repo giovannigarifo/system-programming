@@ -19,5 +19,5 @@ list(APPEND LIBRARIES
 
 list(REMOVE_DUPLICATES LIBRARIES)
 
-add_executable(lab5 main.cpp)
+add_executable(lab5 main.cpp InputPath.cpp InputPath.h)
 target_link_libraries(lab5 ${LIBRARIES})
