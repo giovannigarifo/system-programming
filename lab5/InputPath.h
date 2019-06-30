@@ -11,6 +11,8 @@
 #include <QCompleter>
 #include <QtWidgets/QDirModel>
 #include "PathValidator.h"
+#include <QDebug>
+#include "Model.h"
 
 
 using namespace std;

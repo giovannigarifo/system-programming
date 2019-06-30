@@ -3,8 +3,7 @@
 //
 
 #include "InputPath.h"
-#include "Model.h"
-#include "PathValidator.h"
+
 
 InputPath::InputPath(QWidget *parent) : QWidget(parent) {
     QStringList wordList;
@@ -61,5 +60,5 @@ void InputPath::completionSelected(const QString& input) {
  * this signal is emitted when the QValidator associated return "Invalid"
  */
 void InputPath::wrongInput() {
-    inputPath = "wrong";
+    qDebug() << "wrong input path inserted by the user.";
 }
