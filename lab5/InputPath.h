@@ -6,17 +6,22 @@
 #define LAB5_INPUTPATH_H
 
 #include <QtWidgets/QLineEdit>
+#include <QtWidgets/QPushButton>
+#include <QHBoxLayout>
 
 using namespace std;
 
-class InputPath  : public QLineEdit {
+class InputPath  : public QWidget {
     Q_OBJECT
 
 private:
     QString inputPath;
+    QLineEdit* lineEdit;
+    QPushButton* pushButton;
+    QHBoxLayout* layout;
 
 public:
-    InputPath(const QString &string, QWidget *parent);
+    explicit InputPath(QWidget *parent);
 };
 
 

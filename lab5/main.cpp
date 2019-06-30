@@ -8,8 +8,10 @@
 #include <QChart>
 #include <QMainWindow>
 #include <QtCharts/QChartView>
+#include <QtCharts/QPieSeries>
 #include "InputPath.h"
-
+#include "WholeDiskUsage.h"
+#include "InputPathDiskUsage.h"
 
 //TODO: aggiungere i `.h` in add_executable in cmakelists
 
@@ -21,38 +23,28 @@ int main(int argc, char** argv) {
     // initialize Qt
     QApplication app(argc, argv);
 
-    //root of view tree
+    // root of view tree
     QWidget *window = new QWidget();
 
-    //layout
-    QVBoxLayout *layout = new QVBoxLayout();
+    // bar chart for disk usage
+    WholeDiskUsage* wdu = new WholeDiskUsage(window);
 
-    //line edit component
-    InputPath* inputPath = new InputPath("Insert path here", window);
+    // user input
+    InputPath* ip = new InputPath(window);
 
-    //horizontal bar (disk space usage)
-    QHorizontalStackedBarSeries* series = new QHorizontalStackedBarSeries();
-    QBarSet *set0 = new QBarSet("Jane");
-    series->append(set0);
+    // Pie Chart that display disk usage of input path
+    InputPathDiskUsage* ipdu = new InputPathDiskUsage(window);
 
-    QChart *barChart = new QChart();
-    barChart->addSeries(series);
-    barChart->setTitle("Disk Usage");
-    barChart->setAnimationOptions(QChart::SeriesAnimations);
-
-    QChartView *chartView = new QChartView(barChart);
-    chartView->setRenderHint(QPainter::Antialiasing);
+    // assemble view tree
+    QVBoxLayout *mainLayout = new QVBoxLayout();
+    mainLayout->addWidget(wdu);
+    mainLayout->addWidget(ip);
+    mainLayout->addWidget(ipdu);
+    window->setLayout(mainLayout);
 
 
-
-    //assemble view tree
-    window->setLayout(layout);
-    layout->addWidget(inputPath);
-    layout->addWidget(chartView);
-
-
-    //show view tree and start the message queue loop
-    window->resize(500, window->height());
+    // show view tree and start the message queue loop
+    window->resize(600, window->height());
     window->show();
     return QApplication::exec();
 }
