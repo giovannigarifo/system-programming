@@ -10,6 +10,8 @@
 #include <QChart>
 #include <QtWidgets/QVBoxLayout>
 #include <QtCharts/QPieSeries>
+#include <QDebug>
+
 
 using namespace QtCharts;
 
@@ -25,6 +27,9 @@ private:
 
 public:
     explicit InputPathDiskUsage(QWidget *parent);
+
+public slots:
+    void updatePathDiskUsage(const QString& newPath);
 };
 
 

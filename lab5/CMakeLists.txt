@@ -19,5 +19,5 @@ list(APPEND LIBRARIES
 
 list(REMOVE_DUPLICATES LIBRARIES)
 
-add_executable(lab5 main.cpp InputPath.cpp InputPath.h WholeDiskUsage.cpp WholeDiskUsage.h InputPathDiskUsage.cpp InputPathDiskUsage.h Model.cpp Model.h PathValidator.cpp PathValidator.h)
+add_executable(lab5 main.cpp InputPath.cpp InputPath.h WholeDiskUsage.cpp WholeDiskUsage.h InputPathDiskUsage.cpp InputPathDiskUsage.h Model.cpp Model.h PathValidator.cpp PathValidator.h DirectoryEntry.cpp DirectoryEntry.h)
 target_link_libraries(lab5 ${LIBRARIES})

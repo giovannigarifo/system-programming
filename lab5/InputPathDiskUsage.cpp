@@ -19,9 +19,34 @@ InputPathDiskUsage::InputPathDiskUsage(QWidget *parent) : QWidget(parent) {
     pieChart->setAnimationOptions(QChart::SeriesAnimations);
 
     pieChartView = new QChartView(pieChart, this);
+    pieChartView->resize(600, 600);
     pieChartView->setRenderHint(QPainter::Antialiasing);
 
     layout = new QHBoxLayout(this);
     layout->addWidget(pieChartView);
     this->setLayout(layout);
+
+    //connect to signals
+    connect(Model::getModel(), SIGNAL(pathChanged(const QString&)), this, SLOT(updatePathDiskUsage(const QString&)));
+}
+
+
+/**
+ * slot called when the inputPath in the modle has changed, it's subscribed to the
+ * pathChanged signal of Model.
+ */
+void InputPathDiskUsage::updatePathDiskUsage(const QString& newPath) {
+
+    //remove current series
+    pieChart->removeAllSeries();
+    series = new QPieSeries(this);
+
+    //add new series
+    vector<DirectoryEntry>* entries = Model::getModel()->getDirectoryInfo();
+    for(const DirectoryEntry& entry : *entries){
+        QPieSlice* slice = new QPieSlice(QString::fromStdString(entry.name),entry.size, series);
+        slice->setLabelVisible(true);
+        series->append(slice);
+    }
+    pieChart->addSeries(series);
 }

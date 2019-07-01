@@ -17,10 +17,11 @@ QValidator::State PathValidator::validate(QString &path, int &i) const {
 
     QDir pathDir(path);
 
-    if(path.endsWith("/"))
+    if(path.endsWith("/")){
         if(pathDir.exists())
             return Acceptable;
         else return Invalid;
+    }
 
     if(pathDir.exists())
         return Acceptable;
