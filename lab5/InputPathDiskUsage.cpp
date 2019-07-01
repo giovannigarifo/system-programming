@@ -19,7 +19,6 @@ InputPathDiskUsage::InputPathDiskUsage(QWidget *parent) : QWidget(parent) {
     pieChart->setAnimationOptions(QChart::SeriesAnimations);
 
     pieChartView = new QChartView(pieChart, this);
-    pieChartView->resize(600, 600);
     pieChartView->setRenderHint(QPainter::Antialiasing);
 
     layout = new QHBoxLayout(this);

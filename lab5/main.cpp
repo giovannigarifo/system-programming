@@ -45,14 +45,23 @@ int main(int argc, char** argv) {
 
     // assemble view tree
     QVBoxLayout *mainLayout = new QVBoxLayout();
-    mainLayout->addWidget(wdu);
-    mainLayout->addWidget(ip);
-    mainLayout->addWidget(ipdu);
+
+    QVBoxLayout *subLayout1 = new QVBoxLayout();
+    subLayout1->addWidget(ipdu);
+
+    QHBoxLayout *subLayout2 = new QHBoxLayout();
+    subLayout2->addWidget(wdu);
+    subLayout2->addWidget(ip);
+
+    mainLayout->addLayout(subLayout2);
+    mainLayout->addLayout(subLayout1);
+
     window->setLayout(mainLayout);
 
 
     // show view tree and start the message queue loop
-    window->resize(600, window->height());
+    //window->resize(600, 900);
+    window->showMaximized();
     window->show();
     return QApplication::exec();
 }

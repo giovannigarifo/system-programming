@@ -20,6 +20,7 @@ class WholeDiskUsage : public QWidget {
 private:
     QHorizontalStackedBarSeries* series;
     QBarSet *gbUsed;
+    QBarSet *gbTotal;
     QChart *barChart;
     QChartView* barChartView;
     QHBoxLayout* layout;
@@ -27,7 +28,6 @@ private:
 public:
 
     explicit WholeDiskUsage(QWidget *parent);
-
 };
 
 
