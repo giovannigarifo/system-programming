@@ -7,17 +7,22 @@ Link utili:
 
 # **Piattaforme di esecuzione**
 
-Fatto salvo per i sistemi elementari (i.e. embedded), **una applicazione è eseguita nel contesto di un sistema operativo**: esso offre i servizi, le funzionalità e le convenzioni che permettono il corretto funzionamento dell'applicazione.
+Fatto salvo per i sistemi elementari (i.e. embedded), **una applicazione è eseguita nel contesto di un sistema operativo**: esso offre i **servizi**, le **funzionalità** e le **convenzioni** che permettono il corretto funzionamento dell'applicazione.
 
 Per sfruttare tali servizi, l'applicazione deve conformarsi alle specifiche del SO: sia a livello di codice sorgente, che a livello di codice eseguibile: anche il compilatore deve essere configurato in modo tale da produrre codice compliant con il SO di destinazione.
 
-* **API**: definisce un **set di funzioni e di strutture dati** offerte al programmatore per interfacciarsi con i servizi offerti dal sistema sottostante. 
+## API
+
+definisce un **set di funzioni e di strutture dati** offerte al programmatore per interfacciarsi con i servizi offerti dal sistema sottostante. 
 
 Le API low level offerte dal SO, le **System Call** (SysCall), sono annegate in funzioni di libreria (i.e. syscall `open()` annegata in funzione della C stdlib `fopen()`). Questo è necessario per evitare di dover conoscere i dettagli delle architetture target, dato che **l'implementazione della syscall dipende dall'architettura hardware**. Per utilizzare le API è necessario includere gli appositi file header, e.g. per windows includere il file `Windows.h`. In alcuni casi può essere necessario specificare al linker le librerie da collegare prima di generare l'eseguibile, e.g. la direttiva `-pthread` per specificare a GCC di includere la libreria per la gestione della concorrenza POSIX compliant in ambiente unix-like.
 
 Le API permettono di interfacciarsi con le strutture dati che il SO gestisce per ogni singolo processo (e.g. la Open File Table) attraverso l'utilizzo di riferimenti opachi, detti **handle** in Windows o **file descriptor** in linux. Di fatto, sono implementati come interi utilizzati per indicizzare le suddette strutture dati attraverso la API.
 
-* **ABI**: definisce **il formato** che deve avere un prodotto SW per essere compatibile con il SO: convezioni da utilizzare (i.e. accesso a strutture dati del sistema attraverso Handle/FileDescriptor), uso dei registri, innalzamento di privilegio, caricamento dinamico di moduli, emulazione dlele piattaforme di esecuzione, ecc. E' supportata dagli strumenti che compongolo la toolchain. 
+
+## ABI
+
+definisce **il formato** che deve avere un prodotto SW per essere compatibile con il SO: convezioni da utilizzare (i.e. accesso a strutture dati del sistema attraverso Handle/FileDescriptor), uso dei registri, innalzamento di privilegio, caricamento dinamico di moduli, emulazione dlele piattaforme di esecuzione, ecc. E' supportata dagli strumenti che compongolo la toolchain. 
 
 
 ## Gestione degli errori
@@ -86,7 +91,7 @@ BOOL CreateDirectoryW(
 
 1. Caratteri in **Linux**
 
-GCC codifica i caratteri non ASCII con la codifica UTF-8, all'interno della stessa stringa, che è comunque terminata da `\0`, questo può creare alcuni problemi con funzioni che utilizzano l'associazione caratteri=byte come `strln()`. utilizzare invece la funzione `mbtowcs()` (multi-byte to wide-char string).
+GCC codifica i caratteri non ASCII con la codifica UTF-8, **all'interno della stessa stringa**, che è comunque terminata da `\0`, questo può creare alcuni problemi con funzioni che utilizzano l'associazione caratteri=byte come `strln()`. utilizzare invece la funzione `mbtowcs()` (multi-byte to wide-char string).
 
 In linux il tipo `wchar_t` esiste ma ha lunghezza di 4B e può ospitare qualsiasi carattere UNICODE. Sequenze costanti di `wchar_t` sono precedute da `L`.
 
@@ -97,14 +102,14 @@ wchar_t* s = L"Ω€®™åß∂ƒ∞∆ªøπº¬∑∫µ"; //definizione prece
 
 ## Lo standard **POSIX**: Portable Operating System Interface
 
-Definisce un modello concettuale, un insieme di API a basso livello e un set di comandi shell volti a **rendere portabili gli applicativi tra i diversi sistemi operativi** minimizzandone le differenze.
+Definisce un **modello concettuale**, un insieme di **API a basso livello** e un **set di comandi shell** volti a **rendere portabili gli applicativi tra i diversi sistemi operativi** minimizzandone le differenze.
 
 Linux e MacOS sono pienamente conformi allo standard POSIX, Windows ed Android solo in parte.
 
 Le assunzioni principali riguardano:
 
 * La struttura del file system
-* L'uso di handle per fare riferimento all'interno di un programma ai descrittori dei file
+* L'uso di handle/fd per fare riferimento all'interno di un programma ai descrittori dei file ed in generale per l'accesso alle strutture dati fornite dal SO.
 * L'uso di un sottoinsieme di caratteri portabili
 * La gestione degli errori
 * L'aritmetica e la rappresentazione dei numeri
@@ -117,7 +122,7 @@ La `stdlib` di C/C++ è stata definita sulla base delle assunzioni dello standar
 
 Modello di esecuzione di un linguaggio di programmazione: 
 
-	Insieme dei comportamenti attuati dall'elaboratore a fornte dei costrutti di alto livello del inguaggio.
+	Insieme dei comportamenti attuati dall'elaboratore a fronte dei costrutti di alto livello del inguaggio.
 
 Tale modello spesso non corrisponde a quello di un elaboratore reale: è compito del compilatore trasformare il codice scritto dal programmatore in codice eseguibile dall'elaboratore, attraverso l'utilizzo delle funzionalità offerte dalla runtime library del dispositivo.
 
@@ -144,14 +149,16 @@ Le **librerie di esecuzione** (runtime libs) supportano le astrazioni del lingua
 
 La libreria di esecuzione non può da sola garantire la corretta implementazione di tutte le astrazioni del modello di esecuzione, in particolare quelle legate all'isolamento ed alle sue conseguenze: se più programmi sono in esecuzione, il malfunzionamento di uno non deve avere conseguenze sugli altri.
 
-Per questo motivo i programmi C++ sono isolati, dal SO, nel contesto di esecuzione di un **processo**. Il processo viene modellato da un'opportuna struttura dati interna al sistema operativo che contiene tutte le informazioni utili per la sua gestione: memoria allocata (puntatori ed offset), PID, ecc. 
+Per questo motivo **i programmi C++ sono isolati, dal SO, nel contesto di esecuzione di un processo**. Il processo viene modellato da un'opportuna struttura dati interna al sistema operativo che contiene tutte le informazioni utili per la sua gestione: memoria allocata (puntatori ed offset), PID, ecc. 
 
-L'esecuzione di un programma comporta la creazione di un processo, articolata in diverse sotto fasi:
+### Creazione di un processo
 
-* **creazione dello spazio di indirizzamento** (virtuale): sezione per il codice, dati, stack ed heap.
-* **caricamento dell'eseguibile** (formato ELFin linux ed PE2 in windows) in memoria, nella sezione per il codice e per i dati dello spazio di indirizzamento.
-* **caricamento delle librerie**: esse vengono ricorsivamente mappate nello spazio di indirizzamento.
-* **avvio dell'esecuzione**, la funzione di avvio: configura la piattaforma di esecuzione (inizializza stack, registri, strutture dati per la gestione delle eccezioni), invoca i costruttori degli oggetti globali, invoca il main, ..., invoca i distruttori degli oggetti globali, rilascia l'intero spazio di indirizzamento e tutte le risorse esse collegate (chiamata ad `exit()`). In linux, è la funzione `_start()`. In windows, quattro alternative: se l'applicazione è grafica o meno, se ansi o unicode.
+1. **creazione dello spazio di indirizzamento** (virtuale): sezione per il codice, dati, stack ed heap.
+2. **caricamento dell'eseguibile** (formato ELF in linux ed PE2 in windows) in memoria, nella sezione per il codice e per i dati dello spazio di indirizzamento.
+3. **caricamento delle librerie**: esse vengono ricorsivamente mappate nello spazio di indirizzamento.
+4. **avvio dell'esecuzione**, la funzione di avvio: configura la piattaforma di esecuzione (inizializza stack, registri, strutture dati per la gestione delle eccezioni), invoca i costruttori degli oggetti globali, invoca il main, ..., invoca i distruttori degli oggetti globali, rilascia l'intero spazio di indirizzamento e tutte le risorse esse collegate (chiamata ad `exit()`). In linux, è la funzione `_start()`. In windows, quattro alternative: se l'applicazione è grafica o meno, se ansi o unicode.
+
+### Modalità di esecuzione di un processo
 
 SO necessita del supporto in hardware per il passaggio tra due modalità di esecuzione:
 
@@ -163,31 +170,31 @@ Per consentire ai programmi utente l'accesso controllato a funzionalità accessi
 
 # **Allocazione della Memoria**
 
-Quando un processo viene creato, il suo spazio di indirizzamento viene popolato con diverse aree, ciascuna dotata di propri criteri di accesso.
+Quando un processo viene creato, il suo spazio di indirizzamento viene popolato con diverse aree di memoria, ciascuna dotata di propri criteri di accesso.
 
-* codice eseguibile, contiene le istruzioni in codice macchina, accesso r+x.
-* costanti, accesso r.
-* variabili globali, accesso r+w. Hanno indirizzo fisso, determinato dal compilatore e dal linker.
-* stack, contiene indirizzi e valori di ritorno, parametri e variabili locali (hanno indirizzo relativo allo stack), accesso r+w.
-* heap, insieme di blocchi di memoria disponibili per l'allocazione dinamica, variabili dinamiche sono accesibili solo tramite puntatori, la libreria di esecuzione fornisce meccanismi per l'allocazione ed il rilascio di tali variabili.
+* **codice eseguibile**, contiene le istruzioni in codice macchina, accesso r+x.
+* **costanti**, accesso r.
+* **variabili globali**, accesso r+w. Hanno indirizzo fisso, determinato dal compilatore e dal linker.
+* **stack**, contiene indirizzi e valori di ritorno, parametri e variabili locali (hanno indirizzo relativo allo stack), accesso r+w.
+* **heap**, insieme di blocchi di memoria disponibili per l'allocazione dinamica, variabili dinamiche sono accesibili solo tramite puntatori, la libreria di esecuzione fornisce meccanismi per l'allocazione ed il rilascio di tali variabili. L'indirizzo di una variabile allocata dinamicamente viene deciso a runtime.
 
-### Allocazione dinamica
+## Allocazione dinamica
 
 * in C, malloc, calloc, realloc
 * in C++, viene definito il nuovo costrutto `new`: alloca nello heap un blocco di dimensioni opportune, invoca il costruttore della classe sul blocco, restituisce il puntaotre all'oggetto inizializzato.
 
-**Rischi nell'uso dei puntatori**:
+### Rischi nell'uso dei puntatori
 
-* Dangling pointer: la memoria inidirizzata può essere inutilizzata, in uso ad altre parti del programma o non mappata.
-* Memory Leakage: non rilasciare la memoria allocata dinamicamente non più in uso.
-* Wild pointer: accesso all'rea di memoria indirizzata da un puntatore non inizializzato (contiene valori casuali).
+* **Dangling pointer**: accesso ad un indirizzo di memoria quando il ciclo di vita della variabile ivi allocata è terminato. La memoria inidirizzata può essere inutilizzata, in uso ad altre parti del programma o non mappata.
+* **Memory Leakage**: non rilasciare la memoria allocata dinamicamente non più in uso.
+* **Wild pointer**: accesso all'area di memoria indirizzata da un puntatore non inizializzato (contiene valori casuali).
 
 
 ### Allocazione dinamica in Linux
 
-Durante l'inizializzazione del processo, viene creato un blocco di memoria a disposizione dello heap: le funzioni di allocazione cercheranno di utilizzare la memoria disponibile per soddisfare le richieste, se nessuno dei blocchi liberi dovesse essere abbastanza grande, verrà richiesta al SO altra memoria.
+Durante l'inizializzazione del processo, nella fase relativa alla creazione dello spazio di indirizzamento, viene creato un blocco di memoria a disposizione dello heap: le funzioni di allocazione cercheranno di utilizzare la memoria disponibile per soddisfare le richieste, se nessuno dei blocchi liberi dovesse essere abbastanza grande, verrà richiesta al SO altra memoria.
 
-La struct `mm_struct` contiene la descrizione della mekmoria, alcuni dei campi:
+La struct `mm_struct` contiene la descrizione della memoria, alcuni dei campi:
 
 * start_stack
 * mmamp_base: puntatore all'inizio della zona per il memory mapping dei file
@@ -197,14 +204,12 @@ La struct `mm_struct` contiene la descrizione della mekmoria, alcuni dei campi:
 
 ### Allocazione in Windows
 
-Un processo può gestire più heap, di base ce ne è uno.
+Un processo può gestire più heap, di base ce ne è uno che è usato da malloc, per chiedere la creazione di nuovi Heap esistono le funzioni di libreria:
 
 * `HANDLE HeapCreate()`
 * `BOOL HeapDestroy()`
 * `void* HeapAlloc(HANDLE h, DWORD options, SIZE_T s)`
 * `BOOL HeapFree(HANDLE h, DWORD options, void* ptr)`
-
-
 
 
 
@@ -284,7 +289,7 @@ class ResultCode {
 		
 		//implementazione separata
 		char* get_description(); 
-}
+};
 
 char* ResultCode::get_description(){/*implementazione*/}
 
@@ -316,7 +321,7 @@ int MyClass::doWork(){
 }
 ```
 
-Gli attributi definiti come `static` sono sempre allocato nella memoria globale e non nella stessa area in cui è memorizzato l'oggetto.
+Gli **attributi definiti come `static` sono sempre allocati nella memoria globale** e non nella stessa area in cui è memorizzato l'oggetto.
 
 Incapsulamento:
 
@@ -385,13 +390,11 @@ class CBuffer {
 };
 
 //implementazione costruttore di copia:
-CBuffer::CBuffer(const CBuffer& source):
-	size(source.size){
-		this->ptr = new char[size];
-		memcpy(this->ptr, source.ptr, size);
-	}
+CBuffer::CBuffer(const CBuffer& source){
+	this->ptr = new char[size];
+	memcpy(this->ptr, source.ptr, size);
+}
 
-...
 //uso il costruttore di copia:
 CBuffer buf1{50};
 CBuffer buf2{buf1}; //copia, riceve come parametro un oggetto della stessa classe
@@ -410,12 +413,12 @@ private CBuffer(const CBuffer& source) = delete;
 
 ### Movimento
 
-Alcune delle variabili locali di un oggetto possono essere travasate in un altro oggetto prima della distruzione. 
+Alcune delle variabili locali di un oggetto possono essere travasate in un altro oggetto **prima della distruzione**. 
 
 Bisogna definire il **costruttore di movimento**:
 
 ```
-TypeName(Typename&& source); //il doppio && indica un candidato al movimento del tipo che lo precede, viene detto RValue reference
+ClassName(ClassName&& source); //il doppio && indica un candidato al movimento del tipo che lo precede, viene detto RValue reference
 ``` 
 
 esempio:
@@ -435,7 +438,7 @@ public:
 };
 ```
 
-A differenza del costruttore di copia, non è generato automaticamente dal compilatore per un UDT. 
+A differenza del costruttore di copia, **non è generato automaticamente dal compilatore per un UDT**. 
 
 Se implementato, ogni volta che occorre copiare un valore, il compilatore valuta se effettuare la copia o il movimento.
 
@@ -449,25 +452,27 @@ Obj_Destructor(src);
 Occorre quindi fare in modo che la chiamata al distruttore non elimini le risorse spostate! Ecco perchè occore impostare i puntatori a `nullptr`, altrimenti l'area di memoria puntata verrebbe deallocata.
 
 
-La funzione `std::move()` permtte di trasformareun oggetto generico in un riferimento rvalue, così da poterlo utilizzare nella costruzione o assegnazione per movimento.
+La funzione `std::move()` permette di trasformare un oggetto generico in un riferimento rvalue, così da poterlo utilizzare nella costruzione o assegnazione per movimento.
 
-* Distruttore
 
-Ha il compito di rilasciare le risorse contenute in un oggetto. Se un oggetto non possiede risorse esterne, non occorre dichiararlo. Non va mai chiamato esplicitamente, la chiamata sarà inserita nel programma dal compilatore quando opportuno.
+### Distruttore
 
-Utile dichiararlo quanod un oggetto incapsula puntatori a memoria dinamica o ad altre risorse del sistema. In questo modo le delete delle risorse create sono legate al ciclo di vita dell'oggetto:
+Ha il compito di rilasciare le risorse contenute in un oggetto. Se un oggetto non possiede risorse esterne o variabili allocate dinamicamente, non occorre dichiararlo. Non va mai chiamato esplicitamente, la chiamata sarà inserita nel programma dal compilatore quando opportuno.
+
+Utile dichiararlo quando un oggetto incapsula puntatori a memoria dinamica o ad altre risorse del sistema. In questo modo le delete delle risorse create sono legate al ciclo di vita dell'oggetto:
 
 ```
 class CBuffer {
   	int size;
   	char* ptr;
+  
   	CBuffer(int size): size(size){
-    	ptr = new char[size];
+		ptr = new char[size];
   	}
 
 	//distruttore
   	~CBuffer() {
-    	delete[] ptr;
+		delete[] ptr;
   	}
 };
 ```
@@ -505,7 +510,7 @@ in C++, un oggetto può contenere più oggetti in due differenti modi:
 
 * come parte integrante della propria struttura dati: conviene se gli oggetti contenuti sono in quantità fissa e non troppo grandi (non si ottiene una struttura dati allocata troppo grande)
 
-* facendo riferimento ad essi tramite puntatori: nel costruttore vengono allocati gli oggetti, nel distruttore devono essere deallocati.
+* facendo riferimento ad essi tramite puntatori: nel costruttore vengono allocati dinamicamente gli oggetti, nel distruttore devono essere deallocati esplicitamente.
 
 
 ## Passaggio di parametri
@@ -595,16 +600,18 @@ Cpoint D(B); //D non esiste, viene invocata copia
 
 Durante l'assegnazione di un oggetto, se devono essere assegnati attributi che sono puntatori, quello che fa il compilatore è copiare il puntatore sorgente in quello destinazione, così i due puntatori punteranno allo stesso oggetto/area di memoria (male) e l'area puntata dal puntatore destinazione non sarà più accesibile (male, memory leakage).
 
-Per questo motivo, occorre sempre **ridefinire l'operatore di assegnazione per la classe**, se essa contiene puntatori o riferimenti a memoria allocata dinamicamente:
+Per questo motivo, occorre sempre **ridefinire l'operatore di assegnazione per la classe, se essa contiene puntatori o riferimenti a memoria allocata dinamicamente**:
 
 ```
 CBuffer& operator=(const CBuffer& source){
 
 	if (this != &source){ //protezione
 
+		//fa il lavoro del distruttore
 		delete[] this->ptr;
 		this->ptr = null; //in caso di eccezione della successiva new, il distruttore farebbe un'altra delete
 		
+		//assegna
 		this->size = source.size;
 		this->ptr = new char[size];
 		memcpy(this->ptr, source.ptr, size);
@@ -614,11 +621,11 @@ CBuffer& operator=(const CBuffer& source){
 }
 ```
 
-L'operatore di assegnazione di sovrappone al distruttore: **deve** rilasciare tutte le risorse possedute: si sovrappone al distruttore.
+**L'operatore di assegnazione di sovrappone al distruttore**, **deve** rilasciare tutte le risorse possedute e tutte le aree di memoria allocate dinamicamente dell'oggetto a cui si assegna il nuovo valore (this).
 
-In ogni caso, costruttore di copia ed operatore di assegnazione **devono** essere semanticamente equivalenti.
+In ogni caso, **costruttore di copia ed operatore di assegnazione devono essere semanticamente equivalenti.**
 
-**Regola dei tre**: se una classe dispone di una qualunque di queste funzioni membro: *costruttore di copia, operatore di assegnazione, distruttore*, allora **deve** implementare le altre due. In mancaza di ciò, il compilatore fornirà la propria implementazione, **non generando alcun errore o warning**, e che sarà nella maggior parte dei casi errata.
+**Regola dei tre**: se una classe dispone di una qualunque di queste funzioni membro: *costruttore di copia, operatore di assegnazione, distruttore*, allora **deve** implementare le altre due. In mancanza di ciò, il compilatore fornirà la propria implementazione, **non generando alcun errore o warning**, ma che sarà nella maggior parte dei casi errata.
 
 
 In alcuni casi la copia non è possibile, ma il movimento si ( i.e. `std::unique_ptr`). In questi casi occorre ridefinire l'operatore di movimento, nel caso in cui siano presenti membri allocati dinamicamente:
@@ -641,11 +648,53 @@ CBuffer& operator=(CBuffer&& source){
 
 ### Il paradigma Copy&Swap
 
-Permette di risolvere le problematiche di copia ed assegnazione, che sono soprattutto legate al verificarsi di eccezioni.
+Permette di **risolvere le problematiche di copia ed assegnazione**, che sono soprattutto legate al verificarsi di eccezioni, ad esempio:
 
-1. si introduce la funzione `swap(this, that)` definendola come `friend` della classe, si occupa di scambiare il contenuto delle risorse tra due istanze. Si appoggia sulla funzione `std::swap` che permette di scambiare riferimenti elementari.
+```
+intArray& operator=(const intArray& that) {
 
-2. Si definisce l'operatore di assegnazione con un parametro di tipo valore, i.e. `intArray& operator=(intArray that)`, in modo tale che la logica dell'operatore di copia provveda a fare un duplicato del parametro that, in caso di eccezione, this non viene modificato (l'eccessione si verificherebbe prima di effettuare lo swap, durante il tentativo di creare la copia that)
+  if (this!=&that) { //(1)
+    delete mArray;
+    mArray=NULL; //(2)
+    mSize=that.mSize;
+    mArray = new int[mSize]; //(3)
+    std::copy(that.mArray, that.mArray+mSize, mArray);
+  }
+
+  return *this;
+}
+```
+
+1. se si omette (1) si potrebbe assegnare un oggetto a se stesso.
+2. se si omette (2) in caso di eccezione il distruttore rilascerebbe nuovamente la memoria allocata.
+3. l'allocazione di memoria di (3) potrebbe lanciare un eccezione se non ci fosse abbastanza spazio disponibile nello heap, lasciando l'oggetto in uno stato corrotto.
+
+Con il paradigma copy&swap:
+
+1. si introduce la funzione `swap(this, that)` definendola come `friend` della classe (funzione che non è metodo della classe ma può accedere ai membri privati), si occupa di scambiare il contenuto delle risorse tra due istanze. Si appoggia sulla funzione `std::swap` che permette di scambiare riferimenti elementari.
+
+2. Si definisce l'operatore di assegnazione con un parametro di tipo valore, i.e. `intArray& operator=(intArray that)`, in modo tale che la logica dell'operatore di copia provveda a fare un duplicato del parametro that, in caso di eccezione, this non viene modificato (l'eccessione si verificherebbe prima di effettuare lo swap, durante il tentativo di creare la copia that).
+
+```
+//definita fuori dalla classe, il prototipo va però aggiunto nella classe
+friend void swap(intArray& a, intArray& b) {
+  std::swap(a.mSize, b.mSize);
+  std::swap(a.mArray, b.mArray);
+}
+...
+
+// operatore di assegnazione con copy&swap
+intArray& operator=(intArray that){
+  //that è passato per valore, copiato o mosso
+  swap(*this, that);
+  return *this;
+}
+
+// costruttore di movimento con copy&swap
+intArray(intArray&& that): mSize(0), mArray(NULL) {
+  swap(*this, that);
+}
+```
 
 
 # **Ereditarietà in C++**
@@ -664,17 +713,17 @@ class Base {
 	public:
 		Base();
  		void baz();
-	~Base() {}
+		~Base() {}
 };
 
-class Der : public Base {
+class Der : public Base { //Der is-a Base
 
 	public:
 		//nota chiamata a costruttore classe base
 		Der():Base(){ 
-			Base::baz()
-   	}
-  	~Der() {}
+			Base::baz();
+   		}
+  		~Der() {}
 };
 
 Der *obj = new Der();
@@ -684,9 +733,9 @@ delete obj;
 
 # **Polimorfismo in C++**
 
-Se B estende A, allora è possibile assegnare a `A&` un oggetto B: sfruttabile solo quando si ha a che fare con puntatori, perchè la memoria allocata per A è sempre minore di quella allocata per B, non ci entrerebbe se allocato staticamente.
+Se B estende A, allora è possibile assegnare ad una variabile `A&` un oggetto B: sfruttabile solo quando si ha a che fare con puntatori, perchè la memoria allocata per A è sempre minore di quella allocata per B, non ci entrerebbe se allocato staticamente.
 
-Override di metodi: per default, il compilatore utilizza l'implementazione definita nella classe a cui ritiene appartenga l'oggetto (basandosi sul tipo del riferimento e non sul dato puntato). Per forzare un metodo come polimorfico, occorre utilizzare la keyword `virtual`. In questo caso verrà chiamata l'implementazione corretta (quella del dato puntato). **Solo le funzioni dichiarate `virtual` sono polimorfiche**
+Override di metodi: per default, il compilatore utilizza l'implementazione definita nella classe a cui ritiene appartenga l'oggetto (basandosi sul tipo del riferimento e non sul dato puntato). Per forzare un metodo come polimorfico, occorre utilizzare la keyword `virtual`. In questo caso verrà chiamata l'implementazione corretta (quella del dato puntato). **Solo le funzioni dichiarate `virtual` sono polimorfiche**.
   
 I **metodi virtuali astratti sono dichiarati "=0"**. 
 
@@ -707,20 +756,21 @@ class Der : public Base {
 	public:
 		Der() : Base() { … }
 		void foo(){       
-  		Base::foo();
+  			Base::foo();
 		}
  		void bar() { … }
-  	~Der() { … }
+  		~Der() { … }
 };
 ```
 
 Gli oggetti C++ non posseggono alcun campo che definisce il tipo della classe, per chiamare il metodo corretto, viene utilizzato il meccanismo della `V-table.`
 
-I metodi virtual sono aggiunti nella `V-table` che è la tabella dei metodi virtuali. Ogni classe che ha almeno un metodo virtuale ha una sua Virtual Table, creata in fase di compilazione.  Contiene tante righe quanti sono i metodi virtuali degli oggetti creati di questa classe. 
+I metodi virtual sono aggiunti nella `V-table` che è la tabella dei metodi virtuali. **Ogni classe che ha almeno un metodo virtuale ha una sua Virtual Table**, creata in fase di compilazione.  Contiene tante righe quanti sono i metodi virtuali degli oggetti creati di questa classe. 
 
 Ogni volta che viene creato un oggetto che contiene almeno la dichiarazione o implentazione di un metodo virtuale, nella memoria allocata per l'oggetto si aggiunge il puntatore alla **V-table della classe**. Questo significa che la chiamata ad un metodo virtuale costa un pò di più.
 
 ```
+//lavoro con puntatori, posso utilizzare puntatore a classe base.
 Base* b1 = new Der1(); //Base definisce f come virtual, Der1 lo implementa
 Base* b2 = new Der2(); //Base definisce f come virtual, Der2 lo implementa (diverso da quello di Der1)
 
@@ -737,8 +787,8 @@ Derivata *d=new Derivata();
 Base1 *b1;
 Base2 *b2;
 
-b1= static_cast<Base1 *>d;
-b2= static_cast<Base2 *>d;
+b1= static_cast<Base1 *>(d);
+b2= static_cast<Base2 *>(d);
 
 /*
 Attenzione! Anche se b1==d non è possibile scrivere:
@@ -757,10 +807,10 @@ b2=static_cast<base2*>(b1)
 
 Due tipologie di errori:
 
-* errori attesi: occorre verificare se siano o meno presenti, gestendoli, se necessario propagandoli all'indietro.
-* errori inattesi: possono verificarsi ovunque, è improbabile che siano gestibili nel posto in cui si sono verificati.
+* **errori attesi**: occorre verificare se siano o meno presenti, gestendoli, se necessario propagandoli all'indietro.
+* **errori inattesi**: possono verificarsi ovunque, è improbabile che siano gestibili nel posto in cui si sono verificati.
 
-Le eccezioni permettono di trasferire il flusso di esecuzione da un punto in cui si verifica un errore, ad un punto precedente, in cui è possibile gestirlo. Meccanismo basato sullo stack unwindig.
+Le eccezioni permettono di trasferire il flusso di esecuzione da un punto in cui si verifica un errore, ad un punto precedente, in cui è possibile gestirlo. Meccanismo basato sullo **stack unwindig**.
 
 Una eccezione è lanciata dalla clausola `throw new MyExc()`. Quando il sistema incontra throw, abbandona il normale flusso di elaborazione ed inizia la ricerca di una contromisura: un costrutto `catch` che gestisce l'eccezione generata.
 
@@ -775,9 +825,9 @@ try{
 }
 ```
 
-La libreria standard offre `std::exception`, le sue sottoclassi possono essere estese per gestire eccezioni personalizzate, incapsulano una stringa accesibile dal metodo `what()` che serve per documentare l'errore (utilizzare lo stderr per stampare gli errori: `std::cerr`). NON usare questa stringa per discernere la tipologia di eccezione. Le clausole catch **utilizzano il tipo della classe per discernere le diverse eccezioni**: se la clases dell'eccezione coincide o deriva (is_a: estende pubblicamente un'altra eccezione) quella indicata, il codice corrispondente è eseguito e l'eccezione rientra.
+La libreria standard offre `std::exception`, le sue sottoclassi possono essere estese per gestire eccezioni personalizzate, incapsulano una stringa accessibile dal metodo `what()` che serve per documentare l'errore (utilizzare lo stderr per stampare gli errori, `std::cerr`). NON usare questa stringa per discernere la tipologia di eccezione. Le clausole catch **utilizzano il tipo della classe per discernere le diverse eccezioni**: se la classe dell'eccezione coincide o deriva (is_a: estende pubblicamente un'altra eccezione) quella indicata, il codice corrispondente è eseguito e l'eccezione rientra.
 
-**Stack unwinding**: quando si verifica un'eccezione, lo stack si contrae (srotola) fino al blocco try dove l'eccezione è catturata, questo comporta che **tutte le variabili locali presenti nello stack vengono distrutte**. Se non viene individuato alcun blocco catch che gestisce l'eccezione, lo stack viene contratto completamente ed il programma termina.
+**Stack unwinding**: quando si verifica un'eccezione, lo stack si contrae (srotola) fino al blocco try dove l'eccezione è catturata, questo comporta che **tutte le variabili locali presenti nello stack vengono distrutte attraverso la chiamata agli opportuni distruttori**. Se non viene individuato alcun blocco catch che gestisce l'eccezione, lo stack viene contratto completamente ed il programma termina.
 
 In C++ esiste la notazione `catch(...)` per catturare qualunque tipo di eccezione.
 
@@ -805,16 +855,21 @@ Uno dei paradigmi del C++: se devo utilizzare una risorsa, scrivo una classe in 
 
 * **Operator overloading**:
 
-per via del **principio di espressività** del C++, se è lecito effettuare operazioni (+,-,<<) tra tipi base, lo è anche tra gli oggetti: per questi oggetti, è necessario ridefinire le operazioni base.
+per via del **principio di espressività** del C++, se è lecito effettuare operazioni (+,-,<<) tra tipi base, lo è anche tra gli oggetti UDT: per questi oggetti, è necessario ridefinire le operazioni base.
 
 Non è possibile definire nuovi operatori, o cambiare le precedenze o l'arità (numero di argomenti dell'operatore) dell'operatore.
 
-L'operatore ternario `? :` non è ridefinibile, così come l'operatore di scope `::`, l'operatore di accesso `.` e `sizeof`.
+Operatori non ridefinibili:
+
+* L'operatore ternario `? :`
+* l'operatore di scope `::`
+* l'operatore di accesso `.` 
+* `sizeof`
 
 Si può invece ridefinire:
 
 1) subscript operator `[]`
-2) puntatore a funzione: `<tipo-ritornato> (* myfunc) (<argomenti>)`, si può omettere l'asterisco
+2) **puntatore a funzione**: `<tipo-ritornato> (* myfunc) (<argomenti>)`, si può omettere l'asterisco
 
 ```
 int f(int i, double d){
@@ -828,7 +883,18 @@ var = &f; //identico al precedente
 var(10, 3.14);
 ```
 
-Esistono gli **oggetti funzionali** o funtori: istanza di una qualsiasi classe che abbia ridefinito la funzione membro `operator ()`
+Si possono ridefinire gli **operatori di conversione**, valido sia per i tipi primitivi che gli UDT:
+
+```
+operator float() const {
+	//..conversione del dato a float
+}
+```
+
+## Oggetti funzionali o funtori
+
+Istanza di una qualsiasi classe che abbia ridefinito la funzione membro `operator ()`
+
 ```
 class FC{
 	public:
@@ -838,24 +904,16 @@ class FC{
 }
 
 FC fc;
-int i = fc(5);
+int i = fc(5); // i = 10
 ```
 
-Se voglio scrivere una funzione che può ricevere come parametro sia un oggetto funzionale che un puntatore a funzione, posso definirla così: 
+Se voglio scrivere una funzione che può ricevere come parametro sia un oggetto funzionale che un puntatore a funzione, posso definirla generica: 
 
 ```
 template <typename F>
 void some_func(F& f) {
 	f();
 }
-```
-
-Esiste **l'operatore di conversione**, valido sia per i tipi primitivi che gli UDT:
-
-```
-operator float() const {
-	//..conversione del dato a float
-	}
 ```
 
 ## Funzioni Lamba
@@ -877,7 +935,7 @@ Le  parentesi quadre `[]` identificano la notazione lambda.
 
 Se si vogliono rendere disponibili delle variabili locali all'interno delle funzioni lambda, è possibile aggiungerli all'interno della notazione lambda (passati sia per riferimento che per valore) `[]`, i.e. `[var, &varRef]`. 
 
-Se si usa la notazione `[&]` tutte le variabili definite nello scope in cui è definita la lambda vengono catturate per riferimento, eventuali cambiamenti effettuati dalla lambda su questi dati influenzeranno l'originael. **Nota che questi valori sono mantenuti, come per gli oggetti funzionali, come se fossero definiti static dentro la lambda**, questo perchè una funzione lambda viene trasformata dal compilatore in un oggetto funzionale!
+Se si usa la notazione `[&]` tutte le variabili definite nello scope in cui è definita la lambda vengono catturate per riferimento, eventuali cambiamenti effettuati dalla lambda su questi dati influenzeranno gli originali. **Nota che questi valori sono mantenuti, come per gli oggetti funzionali, come se fossero definiti static dentro la lambda**, questo perchè una funzione lambda viene trasformata dal compilatore in un oggetto funzionale!
 
 Una funzione lambda che cattura dei valori (by value) viene detta **closure**, essa cattura al propio interno una copia dei valori catturati, rendendoli disponibili durante una successiva invocazione (come se fossero static), per default, i valori catturati sono immutabili. Si può aggiungere la keyword `mutable` dopo la lista dei parametri per renderli modificabili: Questo consente la creazione di funzioni dotate di stato, che modificano il proprio comportamento con il susseguirsi delle invocazioni.
 
@@ -919,7 +977,7 @@ test_fun = std::fmaxf;
 test_fun = std::multiplies<float>();
 int x = 1;
 test_fun = [x](float a, float b) {return a*x*b;} //lambda 
-test_fun = [x](auto a, auto b){returb a*x*b;} //lambda generica
+test_fun = [x](auto a, auto b){return a*x*b;} //lambda generica
 ```
 
 ## I modificatori const e static
@@ -940,7 +998,9 @@ class Base { //an abstract class
 Permetto di essere invocate senza che un oggetto della classe sia stato istanziato.
 
 
-# **Programmazione generica e Smart Pointers**
+# **Programmazione generica**
+
+### Funzioni Generiche
 
 Si può definire una funzione in modo che operi su un tipo di dato non ancora precisato, queste funzioni vengono chiamate **template**:
 
@@ -953,12 +1013,15 @@ const T& max(const T& t1, const T& t2){
 int i = max(19,29); // T-> int
 double d = max<double>(2, 3.14); // forza scelta di T a double
 ```
-Opera sul tipo generico T a patto che supporti:
+
+La funzione sopra sul tipo generico T a patto che supporti:
 
 * l'operatore "<"
 * il construttore di copia, per derivare da una variabile temporanea a partire dal dato costante
 
-Ogni volta che si usa la funzione, il compilatore determina quale tipo effettivo assegnare a "T". I parametri sono passati come `const` proprio perchè devono essere valutabili in fase di compilazione.
+Ogni volta che si usa la funzione, il compilatore determina quale tipo effettivo assegnare a "T". **I parametri sono passati come `const` proprio perchè devono essere valutabili in fase di compilazione**.
+
+### Classi generiche 
 
 Si possono definire anche **classi generiche**:
 
@@ -978,7 +1041,7 @@ Accum<int> intAccum(0);
 
 * NOTA: i template delle classi generiche vanno definite nella stessa unità di traduzione (i.e. file.h), non è possibile separare dichiarazione e definizione dell'elemento generico (i.e. dichiarazione in .h e definizione in .c)
 
-In presenza di template, il processodi compilazione viene diviso in due fasi:
+In presenza di template, il processo di compilazione viene diviso in due fasi:
 
 * **definizione del template**: viene creato un albero sintatticoo astratto corrispondente al codice generico.
 * **istanziazione del template**: quando all'interno di altre parti del codice si trova un riferimento al template che indica un valore concreto per i tipi/valori generici, questo viene istanziato specializzando l'AST con i dati concreti, e poi si procede a generare il codice corrispondente.
@@ -993,7 +1056,9 @@ public:
   std::string name() { return name; } 
 };
 
-template class Accum<Person> {
+//specializzo il template Accum per poter lavorare con il tipo Person dato che non ha definito l'operatore +=.
+template <>
+class Accum<Person> {
   int total;
 public:
   Accum(int start = 0): total(start) {}
@@ -1006,18 +1071,18 @@ public:
 
 * aumentano le possibilità espressive senza introdurre overhead durante l'esecuzione (a differenza del polimorfismo).
 * risparmiano tempo di sviluppo
-* garantiscono codice conforme al sistema die tipi
+* garantiscono codice conforme al sistema dei tipi
 * flessibilità a livello sintattico e semantico
 
 **Problematiche dei template**:
 
 * vanno verificate le assunzioni sui tipi effettivamente usati, eventuali casi particolari gestibili mediante la specializzazione.
-* le violazioni sul tipo utilizzato generano errori di compilazione difficilmente interpretabili per via dell'espansione del template
+* le violazioni sul tipo utilizzato generano errori di compilazione difficilmente interpretabili per via dell'espansione del template.
 
 
-## Smart Pointers
+# **Smart Pointers**
 
-La ridefinizione degli operatori permetti di dare una semantica alle operazioni `*` ed `->` anche a dati che non sono (solo) puntatori: ciò permette di creare oggetti che si utilizzano come puntatori ma offrono molto di più.
+La ridefinizione degli operatori permette di dare una semantica agli operatori `*` ed `->` anche a dati che non sono (solo) puntatori: ciò permette di creare oggetti che si utilizzano come puntatori ma offrono molto più funzionalità.
 
 ```
 // sfrutta paradigma RAII per rilasciare memoria durante distruzione
@@ -1040,27 +1105,28 @@ I template per gli smart pointer sono disponibili tramite `#include <memory>`.
 
 * **`std::unique_ptr<BaseType>`**
 
-Impedisce la copia e l'assegnazione, ma permette il movimento esplicito utilizzando la funzione `std::move()`. Implementa il concetto di **proprietà esclusiva**. Se utilizzato per puntatore ad array, bisogna utilizzare `<BaseType[]>`. 
+**Impedisce la copia e l'assegnazione**, ma **permette il movimento esplicito** utilizzando la funzione `std::move()`. Implementa il concetto di **proprietà esclusiva**. Se utilizzato per puntatore ad array, bisogna utilizzare `<BaseType[]>`. 
 
 Ha gli stessi tempi di esecuzione e la stessa occupazione di memoria di un puntatore nativo. Usi tipici sono per garantire la distruzione in caso di eccezioni (RAII), acquisire o passare la proprietà di un oggetto con un ciclo di vita dinamico tra funzioni, gestire in modo sicuro oggetti polimorfici.
 
 
 * **`std::shared_ptr<BaseType>`**
 
-Permette **proprietà condivisa** con un meccanismo di conteggio dei riferimenti: molti oggetti possono referenziare il blocco di memoria puntato, quando l'ultimo viene distrutto, il blocco viene rilasciato. Utilizza più risorse di un puntatore nativo. 
+Permette **proprietà condivisa** con un meccanismo di **conteggio dei riferimenti**: molti oggetti possono referenziare il blocco di memoria puntato, quando l'ultimo viene distrutto, il blocco viene rilasciato. Utilizza più risorse di un puntatore nativo. 
 
-Il costruttore `shared_ptr<T>(T* native_ptr)` permette di costruire uno shared ptr che incapsula il puntatore nativo. Il distruttore decrementa il contatore dei riferimenti e libera la memoria posseduta quando il contatore raggiugne zero. La classe ridefinisce l'operatore di assegnazione `=`, si può utilizzare per assegnare il puntatore condiviso ad un'altro shared ptr, incrementando il contatore dei riferimenti.
 
-La funzione `std::make_shared<BaseType>(Args...)` viene usata per creare un oggetto di tipo BaseType, passando al suo costruttire gli argomenti `Args...`, e ritornarne uno shared pointer all'oggetto.
+Il costruttore `shared_ptr<T>(T* native_ptr)` permette di costruire uno shared ptr che incapsula il puntatore nativo. Il distruttore decrementa il contatore dei riferimenti e libera la memoria posseduta quando il contatore raggiunge zero. La classe ridefinisce l'operatore di assegnazione `=`, si può utilizzare per **assegnare il puntatore condiviso ad un'altro shared ptr, incrementando il contatore dei riferimenti**.
+
+La funzione `std::make_shared<BaseType>(Args...)` viene usata per creare un oggetto di tipo BaseType, passando al suo costruttore gli argomenti `Args...`, e ritornarne uno shared pointer all'oggetto.
 
 Ogni shared_ptr mantiene due puntatori:
 
 * uno all'oggetto puntato
 * e l'altro ad un **blocco di controllo**
 
-Il blocco di controllo è allocato dinamicamente e mantiene il distruttore, l'alocatore, il contatore di shared_ptr che condividono la proprietà dell'oggetto, il contatore di weak_ptr che fanno riferimento all'oggetto.
+Il blocco di controllo è allocato dinamicamente e mantiene il distruttore, l'allocatore, il contatore di shared_ptr che condividono la proprietà dell'oggetto, il contatore di weak_ptr che fanno riferimento all'oggetto.
 
-Cast tra shared_ptr, sono disponibili le due funzioni:
+**Cast tra shared_ptr**, sono disponibili le funzioni:
 
 ```
 std::shared_ptr<T> static_pointer_cast<T>(shared_ptr<U>)
@@ -1084,10 +1150,10 @@ Permette di osservare il contenuto di uno shared_ptr senza partecipare al conteg
 std::weak_ptr<int> gw;
 
 void f(){
-    if (auto spt = gw.lock()) //spt partecipa al conteggio, ma verrà distrutto
-  	   std::cout<<"gw:"<< *spt << "\n";
-    else 
-        std::cout<< "gw e' scaduto\n";
+	if (auto spt = gw.lock()) //spt partecipa al conteggio, ma verrà distrutto
+		std::cout<<"gw:"<< *spt << "\n";
+	else 
+		std::cout<< "gw e' scaduto\n";
 }
 
 int main() {
@@ -1119,7 +1185,7 @@ Le classi base sono `ifstream` ed `ofstream` per l'accesso rispettivamente in le
 
 `fstream` eredita da entrambe e permette accesso sia in lettura che scrittura.
 
-Le operazioni di IO **non sollevano eccessioni**: va testato esplicitamente il risultato di ogni operazione effettuata. Le funzioni `eof()`, `fail()`, `bad()`, `good()` chiamate sull'oggetto stream permettono di discernere la condizione che si è verificata in seguito all'ultima operazione di IO:
+Le operazioni di IO **non sollevano eccezioni**: va testato esplicitamente il risultato di ogni operazione effettuata. Le funzioni `eof()`, `fail()`, `bad()`, `good()` chiamate sull'oggetto stream permettono di discernere la condizione che si è verificata in seguito all'ultima operazione di IO:
 
 * `eof()`: true se è stato incontrato EOF.
 * `fail()`: true se è avvenuto un errore di formato, ma che non ha causato la perdita di dati
@@ -1130,11 +1196,9 @@ In uno stato bad, tutte le successive operazioni di lettura/scrittura falliscono
 
 
 
-
-
 # **Standard Template Library (STL)**
 
-Libreria basata su tre componenti: **contenitori**, **algoritmi** ed **iteratori**. La libreria è implementata attraverso l'uso di template, rendola quindi generica ( polimorfismo a compile-time).
+Libreria basata su tre componenti: **contenitori**, **algoritmi** ed **iteratori**. La libreria è implementata attraverso l'uso di template, rendola quindi generica (polimorfismo a compile-time).
 
 * container: strutture dati.
 * algoritmi: applicabili ai container, operano su un range di elementi.
@@ -1152,7 +1216,7 @@ Tre tipologie:
 
 * **Container adapter**: sono contenitori sequenziali specializzati,e.g.: stack (LIFO), queue (FIFO), priority_queue. **NON supportano gli iteratori**.
 
-In C++ per ogni tipo UDT va definita una funzione hashcode, questo perchè non esiste come in java la definizione della classe padre (object per java).
+In C++ per ogni tipo UDT utilizzato nei contenitori associativi non ordinati va specializzato il template `hash<T>`, classe generica di cui specializzare la ridefinizione dell'operatore `()`. 
 
 ## Contenitori Sequenziali
 
@@ -1186,7 +1250,7 @@ Per le mappe, `pair<KeyType,ValueType> std::make_pair<KeyType, ValueType>(key, v
 
  ## Interfaccia comune per i Container
 
- Nonostante esistano diversi tipi di container, essi hanno molto in comune, molte oeprazioni non dipendono dal tipo di container:
+ Nonostante esistano diversi tipi di container, essi hanno molto in comune, molte operazioni non dipendono dal tipo di container:
 
  * creazione, cancellazione, accesso e swap di elementi.
  * accessibilità attraverso iterator.
@@ -1195,7 +1259,7 @@ Per le mappe, `pair<KeyType,ValueType> std::make_pair<KeyType, ValueType>(key, v
 Ad esempio, per qualunque tipo di container si possono invocare i metodi:
 
 * `clear()`  ne cancella tutti gli elementi.
-* `size()` ritornail numero di elementi
+* `size()` ritorna il numero di elementi
 * `empty` verifica che sia vuoto
 * `begin()` ed `end()` forniscono coppia di iteratori che puntano all'inizio/fine del container.
 * `swap(cont2)` scambia gli elementi dei due container.
@@ -1263,7 +1327,7 @@ std::advance(iter, n);
 Contenitori sequenziali che hanno memoria di come sono stati inseriti gli oggetti:
 
 * `std::stack`: offre i metodi `push()` e `pop()` per inserire/rimuovere elementi in cima, `top()` ritorna un riferimento all'oggetto in cima. Supportano gli operatori di confronto. complessità O(1).
-* `std::queue`: push e pop per inserimento/rimovione, front e back per accesso ad inizio e fine coda. Complessità O(1).
+* `std::queue`: push e pop per inserimento/rimozione, front e back per accesso ad inizio e fine coda. Complessità O(1).
 * `std::priority_queue`: un coda a priorità, la priorità è gestita attraverso l'operatore di confronto `std::less`.
 
 Non possono essere usati con gli algoritmi della STL, supportano un'interfaccia ridotta rispetto agli altri container. Non supportano gli iteratori, conoscono la loro dimensione.
@@ -1271,7 +1335,7 @@ Non possono essere usati con gli algoritmi della STL, supportano un'interfaccia 
 
 ## Algoritmi della STL
 
-STL fornisce algoritmi per lavoare sui container ed i loro elementi: sono implementati come funzioni template e sono indipendenti dal tipo di elementi del container. L'algoritmo viene applicato in loop ad un intervallo di dati.
+STL fornisce algoritmi per lavorare sui container ed i loro elementi: sono implementati come funzioni template e sono indipendenti dal tipo di elementi del container. L'algoritmo viene applicato in loop ad un intervallo di dati.
 
 * in `<numeric>` si trovano algoritmi numerici come accumulate (che non lavora solo sui numeri), inner_product, adjacent_difference...
 
@@ -1330,51 +1394,60 @@ Questo policy non implementano alcun controllo su data race o deadlock.
 
 # **Librerie**
 
-Processo di compilazione:
+Compilazione e linking:
+
+* il programma è suddiviso in un insieme di file sorgenti `.h` e `.cpp`
+* il **compilatore** compila i file sorgenti producendo dei moduli oggetto che contengono riferimenti pendenti alle funzioni/variabili degli altri moduli o delle librerie
+* il **linker** unisce più moduli oggetto in un eseguibile finale, risolvendo i simboli esterni e sostituendoli con gli opportuni indirizzi.
+
+Le **librerie sono insiemi di moduli** oggetto archiviati in un unico file. Le funzioni e le variabili esportate dalla libreria sono dichiarate in un file header, i cui simboli sono preceduti dal modificatore `extern`.
+
+Processo di compilazione in dettaglio:
 
 * analisi lessicale (pre-processor)
 * analisi sintattica, produce un Abstract Syntax Tree 
 * analisi semantica, decora l'AST
 * istanziazione dei template
-* generazione dell'assembler semanticamente identico al programma C, genera un **file oggetto**.
+* compilazione dei sorgenti .h e .cpp per generare i **moduli oggetto**.
 * il linker unisce più moduli oggetto, comprese le librerie, in un eseguibile finale. Se è necessario utilizzare librerie esterne, va aggiunto il flag `-l<nomelibreria>`, i.e. per la libreria matematica: `-lm`. Oltre al nome della libreria va anche data la lista di directory nelle quali cercare le librerie con l'opzione `-L<>`, questa opzione fa ovverride del contenuto della variabile d'ambiente `LIBPATH`.
 
-Le librerie sono insiemi di moduli oggetto archiviati in un unico file. Le funzioni e le variabili esportate dalla libreria sono dichiarate in un file header, i cui simboli sono preceduti dal modificare `extern`.
+
 
 ## Caricamento delle librerie
 
-L'uso di una libreria richiede due fasi:
+L'uso di una libreria richiede **due fasi**:
 
-* identificazione dei moduli necessari e loro caricamento in memoria
-* aggiornamento degli indirizzi delle chiamate alle funzioni per puntare correttamente ai moduli caricati
+1. identificazione dei moduli necessari e loro caricamento in memoria
+2. aggiornamento degli indirizzi delle chiamate alle funzioni per puntare correttamente ai moduli caricati
 
-Le due fasi possono essere fatte:
+Le due fasi possono essere eseguite:
 
-* durante il collegamento (dal linker): static linking.
-* durante il caricamento del programma (dal loader), in questo caso si caricano le librerie dinamiche (condivise) con estensione su win/*nix: `.dll` / `.so`
-* durante l'esecuzione (dal programma stesso), chiamato dynamic linking.
+* dal **linker** durante il collegamento: **static linking**.
+* dal **loader** durante il caricamento del programma, in questo caso si caricano le librerie dinamiche (condivise) con estensione su win/*nix: `.dll` / `.so`
+* dal **programma stesso** durante l'esecuzione, chiamato **dynamic linking**.
+
 
 ## Tassonomia delle librerie
 
-* Librerie a collegamento statico
+### Librerie a collegamento statico
 
-Contengono funzionalità collegate staticamente al codice binario del programma in fase di compilazione. Una libreria statica è un file archivio che contiene un insieme di file object, creato dall'`archiver`. In linux hanno estensione `.a`, i.e.: `libm.a`. In windows hanno estensione `.lib`.
+Contengono funzionalità collegate staticamente al codice binario del programma in fase di compilazione. **Una libreria statica è un file archivio che contiene un insieme di moduli oggetto**, è creata dall'`archiver`. In linux hanno estensione `.a`, i.e.: `libm.a`. In windows hanno estensione `.lib`.
 
-Il linker identifica in quali module della libreria si trovanole funzioni richiamate nel programma, e li carica nell'eseguibile. Terminata questa fase, i moduli ed i simboli della libreria sttica risultano annegati nel codice binario del programma compilato.
+Il linker identifica in quali moduli della libreria si trovano le funzioni richiamate nel programma, e li carica nell'eseguibile. Terminata questa fase, i moduli ed i simboli della libreria statica risultano annegati nel codice binario del programma compilato.
 
 **Vantaggi**: non ci sono dubbi su versione adottata della libreria, portabilità.
 
 **Svantaggi**: stesse librerie presenti in processi differenti occupano memoria inutulmente, applicazione va ricompilata ad ogni modifica della libreria.
 
-* Librerie a collegamento dinamico
+### Librerie a collegamento dinamico
 
 Il file eseguibile non contiene i moduli della libreria, sono caricati successivamente (dal loader) nello spazio di indirizzamento del processo. 
 
-All'atto della creazione del processo, il loader mappa nello spazio di indirizzamento virtuale del nuovo processo tutte le librerie condivise, risolvendo i simoli corrispondenti presenti nel programma.
+All'atto della creazione del processo, il loader mappa nello spazio di indirizzamento virtuale del nuovo processo tutte le librerie condivise, risolvendo i simboli corrispondenti presenti nel programma.
 
 In linux il dynamic linker è la libreria condivisa `ld.so`, non richiede il caricamento di altre librerie, altrimenti non funzionerebbe. In windows il loader è parte del kernel.
 
-E' possibile postporre la fase di caricamento dell librerie dal loading all'esecuzione, l'applicazione in questo caso si avvia in assenza di qualsiasi liberia e ne fa richiesta quando necessario (incontra la prima chiamata ad una funzione di libreria). 
+E' possibile postporre la fase di caricamento delle librerie dal loading all'esecuzione, l'applicazione in questo caso si avvia in assenza di qualsiasi liberia e ne fa richiesta quando necessario (incontra la prima chiamata ad una funzione di libreria).
 
 ### Dynamic Linking in Linux
 
@@ -1389,23 +1462,23 @@ Linux espone le `Dynamic Loading API` per gestire il caricamento ritardato in fa
 
 Le librerie sono fornite in formato `PE2` con estensione `.dll`: contengono una funzione di ingresso `DllMain()`, oltre a funzioni, variabili globali, costanti, risorse.
 
-La funzione `LoadLibreary()` carica la libreria indicata e la mappa nello spazzio di indirizzamento del processo: ritorna la handle del modulo caricato.
+La funzione `LoadLibrary()` carica la libreria indicata e la mappa nello spazio di indirizzamento del processo: ritorna la handle del modulo caricato.
 
 Per esportare e importare funzioni e strutture dati dalla dll:
 
 1. direttive `dllexport` e `dllimport`
 2. creare un file module definition `.def`
 
-* `__declspec(dllimport)` per impotrare simboli pubblici della DLL
+* `__declspec(dllimport)` per importare simboli pubblici della DLL
 * `__declspec(dllexport)` per esportare simboli pubblici dalla DLL e renderli accessibili
 
 
 ```
 // SampleDLL.h
 #ifdef EXPORTING_DLL
-extern __declspec(dllexport) void HelloWorld() ;
+extern __declspec(dllexport) void HelloWorld();
 #else
-extern __declspec(dllimport) void HelloWorld() ;
+extern __declspec(dllimport) void HelloWorld();
 #endif
 
 
@@ -1425,7 +1498,7 @@ void someMethod() {
 
 // Dynamic_Dll_usage.c
 HINSTANCE hDLL = LoadLibrary(L"sampleDLL.dll");
-if (hDLL != NULL)
+if (hDLL != -1)
 {
 	DLLPROC Hw = (DLLPROC) GetProcAddress(hDLL,L"HelloWorld");  	
 	if (Hw != NULL) (*Hw)();
@@ -1436,7 +1509,7 @@ if (hDLL != NULL)
 
 # **Programmazione concorrente**
 
-Un programma concorrente dispone didue o più flussi di esecuzione contemporanei che vivono nello stesso spazio di indirizzamento. All'atto della creazione un processo dispone di un solo flusso di esecuzione, il thread principale.
+Un programma concorrente dispone di due o più flussi di esecuzione contemporanei che vivono nello stesso spazio di indirizzamento. All'atto della creazione un processo dispone di un solo flusso di esecuzione, il thread principale.
 
 Vantaggi dell'uso di più thread:
 
@@ -1462,9 +1535,9 @@ Problema dell'accesso a variabili condivise in memoria: la presenza di cache hw 
 Ogni Thread dispone di:
 
 * un proprio **stack** delle chiamate
-* un proprio stack pointer e program counter
-* un proprio puntatore all'ultimo contesto per la gestione delle eccezioni (puntatore al catch block).
-* lo stato del proprio "processore virtuale": valori dei registri, modalità di esecuzione, ecc...
+* un proprio **stack pointer** e **program counter**
+* un proprio **puntatore all'ultimo contesto per la gestione delle eccezioni** (puntatore al catch block).
+* lo **stato del proprio "processore virtuale"**: valori dei registri, modalità di esecuzione, ecc...
 
 I Thread dello stesso processo condividono:
 
@@ -1486,13 +1559,13 @@ HANDLE WINAPI CreateThread(
   LPSECURITY_ATTRIBUTES	lpThreadAttributes, //contesto di sicurezza in cui il thread sarà eseguito
   SIZE_T 	dwStackSize, // dimensione dello stack
   LPTHREAD_START_ROUTINE	lpStartAddress, //funzione che dovrà eseguire
-  LPVOID	lpParameter, //parametro passatoalla funzione
+  LPVOID	lpParameter, //parametro passato alla funzione
   DWORD	dwCreationFlags, //se deve essere runnable o sospeso
   LPDWORD	lpThreadId // dove salvare il thread ID
 );
 ```
 
-ritorna un handle che permette di fare riferimento al thread nelle altre funzioni del SO. Windows crea un thread kenel object a cui associa tutti i parametri passati alla CreateThread.
+ritorna un handle che permette di fare riferimento al thread nelle altre funzioni del SO. Windows crea un **oggetto kernel a cui associa tutti i parametri passati alla CreateThread**.
 
 Con `HANDLE GetCurrentThread()` si può ottenere un riferimento opaco al thread in esecuzione.
 
@@ -1502,7 +1575,7 @@ Si può terminare un thread in Windows:
 * invocando `ExitThread()`
 * se un altro thread del processo invoca `TerminateThread()`
 
-In C++, è opportuno evitare di chiamare `ExitThread()` o `ExitProcess()`, dato che i distruttori degli oggetti allocati nello stack dei thread e quelli delle variabili globali NON verrebbero eseguiti. Per evitare ciò, si può ricorrere all'utilizzo di una variabile condivisa che segnali l'avvenuta distruzione di tutte le strutture dati prima di permettere di procedere con l'uscita del thread/processo.
+In C++, è opportuno evitare di chiamare `ExitThread()` o `ExitProcess()`, dato che i **distruttori degli oggetti allocati nello stack dei thread e quelli delle variabili globali NON verrebbero eseguiti**. Per evitare ciò, si può ricorrere all'utilizzo di una variabile condivisa che segnali l'avvenuta distruzione di tutte le strutture dati prima di permettere di procedere con l'uscita del thread/processo.
 
 Quando un thread termina, l'oggetto kernel corrispondente passa nello stato `signaled`. Un thread/processo può rimanere in attesa che tale condizione si verifichi senza sprecare CPU, attraverso l'uso delle funzioni delle API windows:
 
@@ -1512,7 +1585,7 @@ Quando un thread termina, l'oggetto kernel corrispondente passa nello stato `sig
 
 ### Thread in Linux
 
-La libreria `pthread` (POSIX Thread) è la libreria standard per la gestione dei thrad in ambientei UNIX-like.
+La libreria `pthread` (POSIX Thread) è la libreria standard per la gestione dei thread in ambienti posix compliant.
 
 Tipi e funzioni definite:
 
@@ -1556,7 +1629,7 @@ int main() {
 
 Altri parametri oltre al callable vengono inoltrati all'oggetto callable attraverso la funzione `std::forward` che inoltra un riferimento al dato originale o un riferimento rvalue, in funzione del tipo di dato passato (lvalue nel primo caso, rvalue nel secondo). 
 
-Per passare un dato come riferimento (i.e. per **ottenere valori di ritorno**, dato che la funzione callable deve essere void) e non come una copia temporanea occorre incapsularlo in un  oggetto di tipo `std::refernce_wrapper<T>` tramite l'uso delle funzioni definite in `<functional>`: `std::ref()` ed `std::cref()`. 
+Per passare un dato come riferimento (i.e. per **ottenere valori di ritorno**, dato che la funzione callable deve essere void) e non come una copia temporanea occorre incapsularlo in un  oggetto di tipo `std::reference_wrapper<T>` tramite l'uso delle funzioni definite in `<functional>`: `std::ref()` ed `std::cref()`. 
 
 Nota bene: i valori sono passati come **riferimento** e non come indirizzo: se passo un parametro `T` nella callable il tipo sarà `T&`.
 
@@ -1644,9 +1717,9 @@ std::mutex m;
 
 void someFunction() {
 
-	// acquisizione del lock
+   // acquisizione del lock
   while (m.try_lock() == false) {
-    do_some_work(); //while waiting
+    do_some_work(); //while waiting, instead this is busy wait
   }
   std::lock_guard<std::mutex> lg(m, std::adopt_lock); //lg registra m al proprio interno, senza cercare di acquisirlo
 
@@ -1656,14 +1729,14 @@ void someFunction() {
 }
 ```
 
-`std::scoped_lock<Lockable>` è stato introdotto come evoluzione RAII di `std::lock`. E' equivalente a lock_guard ma è un template con un numero variabile di parametri (Lockable) accettati, il lock viene acquisito su tutti i Lockable passati al momento della creazione, e rilascito alla ditruzione. Se al lock dell'n-esimo mutex passato viene lanciata un'eccezione, tutti i lock già riuscitit vengono rilasciati. **Risolve il problema del deadlock**.
+`std::scoped_lock<Lockable>` è stato introdotto come evoluzione RAII di `std::lock`. E' equivalente a lock_guard ma è un template con un numero variabile di parametri di tipo Lockable accettati, il lock viene acquisito su tutti i Lockable passati al momento della creazione, e rilasciato alla distruzione. Se al lock dell'n-esimo mutex passato viene lanciata un'eccezione, tutti i lock già riusciti vengono rilasciati. **Risolve il problema del deadlock**.
 
 
 `std::unique_lock<Locable>` estende il comportamento di lock_guard: offre gli stessi metodi lock e unlock, il costruttore offre numerose politiche di gestione selezionate in base al secondo parametro: 
 
 * `adopt_lock` verifica che il thread possieda già il Lockable passato come parametro e lo adotta.
 
-* `defer_lock` si limita  a registrare il riferimento al Lockable senza cercare di acquisirlo.
+* `defer_lock` si limita a registrare il riferimento al Lockable senza cercare di acquisirlo.
 
 
 Oltre ai quattro tipi di mutex visti sopra, ne esiste un quinto per la gestione della sincronizzazione per oggetti che possono essere accedduti in lettura in modo condiviso, ma scritti in modo esclusivo:  
@@ -1676,27 +1749,27 @@ Oltre ai quattro tipi di mutex visti sopra, ne esiste un quinto per la gestione 
 	class MyCounter
 	{ public:
   	  int get() { //multiple thread can read
-    	    std::shared_lock sl(sm);
+    	  std::shared_lock sl(sm);
       	  return counter;
     	}
     	void increment() { //only one can modify at a time
       	  std::unique_lock ul(sm);
-       		counter++;
+       	  counter++;
     	}
     	void reset() {
       	  std::unique_lock ul(sm);
-        	counter = 0;
+          counter = 0;
     	}
 	private:
   	  std::shared_mutex sm;
-    	int counter = 0;
+      int counter = 0;
 	};
 	```
 
 
 ## Sincronizzazione ad alto livello in C++11
 
-`std::async` ed `std::future` definite nell'header `<future>` permettono di implementare algoritmi paralleli in cui ogni thread opera su sotto compiti **indipendenti**:
+`std::async` ed `std::future` definite nell'header `<future>` permettono di implementare algoritmi paralleli in cui **ogni thread opera su sotto compiti indipendenti**:
 
 * la computazione di uno non dipende da quella di un altro
 * non vi è accesso in scrittura a dati condivisi
@@ -1708,7 +1781,7 @@ Oltre ai quattro tipi di mutex visti sopra, ne esiste un quinto per la gestione 
 
 Quando viene eseguita async, se possibie, invoca in un thread separato l'oggetto Callable con i relativi parametri. Altrimenti il task viene eseguito **in modo sincrono** al momento della chiamata a `wait()` o `get()` sull'oggetto future.
 
-In ogni caso, `async()` ritorna immediatamente, senza attendere il completamento della funzione chiamata: di fatto, sgancia il thread, se può, e ritorna.
+In ogni caso, `async()` **ritorna immediatamente**, senza attendere il completamento della funzione chiamata: di fatto, sgancia il thread, se può, e ritorna.
 
 Si accede al risultato dell'esecuzione attraverso il metodo `get()` chiamato sull'oggetto future ritornato:
 
@@ -1741,7 +1814,7 @@ int main() {
 	try{
 		 future1 = std::async(std::launch::async, f1, "mystring", 3.14); //calcola su thread secondario
 	}catch(system_error& exc){
-		exit(0)
+		exit(0);
 	}
   std::string res2 = f2(18);  //calcola sul thread principale
   std::string res1 = future1.get(); //blocca in attesa di risultato, se thread secondario non ha terminato
@@ -1751,7 +1824,7 @@ int main() {
 
 ### `std::future<T>`
 
-Consente di accedere in modo sicuro e ordinato al risultato di un'operazione asincrona. Il tipo T rappresenta il tipo del risultato ritornato. Mantiene internamente uno stato condiviso con l'oggetto Callable passato ad async, quando viene invocato il metodo `get()` del future, lo stato condiviso viene rimosso e l'oggetto future entra in uno stato invalido: `get()` può essere **chiamato una sola volta**.
+Consente di accedere in modo sicuro e ordinato al risultato di un'operazione asincrona. Il tipo T rappresenta il tipo del risultato ritornato dall'oggetto Callable. Mantiene internamente uno stato condiviso con l'oggetto Callable passato ad async, quando viene invocato il metodo `get()` del future, lo stato condiviso viene rimosso e l'oggetto future entra in uno stato invalido: `get()` può essere **chiamato una sola volta**.
 
 `wait()` consente di forzare l'avvio del task e attenderne la terminazione, senza prelevare il risultato: può essere chiamato più volte, se il task è già terminato, ritorna immediatamente. 
 
@@ -1761,7 +1834,7 @@ E' possibile attendere il completamento per un periodo specifico di tempo, **sen
 * `std::future_status::ready` se il risultato era già pronto o lo è diventato nel tempo di attesa.
 * `std::future_status::timeout` se il tempo è scaduto, senza che il risultato sia diventato pronto.
 
-**Quando un oggetto future viene distrutto, il distruttore attende la fine del task lanciato**: se la computazione è ancora attva, questo può comportare un'attesa significativa. Le attività lanciate in questo modo non sono cancellabili se non avendo cura di condividere con la funzione chiamata una variabile che possa essere usata come criterio di terminazione.
+**Quando un oggetto future viene distrutto, il distruttore attende la fine del task lanciato**: se la computazione è ancora attiva, questo può comportare un'attesa significativa. Le attività lanciate in questo modo non sono cancellabili se non avendo cura di condividere con la funzione chiamata una variabile che possa essere usata come criterio di terminazione.
 
 ```
 int quickComputation(); //approssima il risultato con un'euristica 
@@ -1819,7 +1892,7 @@ int main() {
 
 Fa da ponte tra il Callable eseguito in un nuovo thread da async e l'oggetto future restituito.
 
-Rappresenta l'impegno, da parte del thread, a produrre prima o poi un oggetto di tipo T e di metterlo a disposizione, oppure di notificare un'eccezione che abbia impedito il calcolo dell'oggetto. Dato un oggetto promise, si può verificare la promessa si è avverata richiedendo l'oggetto future corrispondente attraverso il metodo `get_future()`, e su questo chiamare `get()`, che blocca il thread in attesa che la promise si avveri ed il future restituisca il suo valore (o l'eccezzione).
+Rappresenta l'impegno, da parte del thread, a produrre prima o poi un oggetto di tipo T e di metterlo a disposizione, oppure di notificare un'eccezione che abbia impedito il calcolo dell'oggetto. Dato un oggetto promise, si può verificare che la promessa si è avverata richiedendo l'oggetto future corrispondente attraverso il metodo `get_future()`, e su questo chiamare `get()`, che blocca il thread in attesa che la promise si avveri ed il future restituisca il suo valore (o l'eccezione).
 
 ```
 /*
@@ -1833,7 +1906,6 @@ void f(std::promise<std::string> p) {
 
   try {
     //Calcolo il valore da restituire...
-
     std::string result = …;
     p.set_value(std::move(result));
   
@@ -1863,7 +1935,6 @@ int main() {
 * con thread non c'è gestione built-in di eccezioni e valori di ritorno.
 * con thread si possono ottenere risultati intermedi.
 
-
 #### Uso dei thread detached
 
 Sono pericolosi dato che diventa impossibile conoscere lo stato del thread distaccato.
@@ -1877,10 +1948,9 @@ Per evitare questi problemi, la classe promise fornisce dei metodi spefici per e
 * `set_value_at_thread_exit(T val)`
 * `set_exception_at_thread_exit(std::exception_ptr p)`
 
-
 #### Thread Pool di Packaged task
 
-la classe `std::packaged_task<T(Args...)>` può essere usata per incapsulare una funzione che restituirà un tipo T, ricevendo una serie di argomenti. Quando il packaged_task viene eseguito, la funzione viene chiamata. Un packaged task ha associato un future, quando l'esecuzione finirà, il future potrà restituire il risultato.
+la classe `std::packaged_task<T(Args...)>` può essere usata per incapsulare una funzione che restituirà un tipo T, ricevendo una serie di argomenti. Quando il packaged_task viene eseguito, la funzione viene chiamata. **Un packaged task ha associato un future, quando l'esecuzione finirà, il future potrà restituire il risultato.**
 
 I packaged task si prestano ad essere utilizzati per implementare **Thread Pool**: un numero limitato di thread a cui demandare l'esecuzione di compiti puntuali. 
 
@@ -1891,9 +1961,9 @@ Il numero di core disponibili si può ottenere attraverso `std::thread::hardware
 
 Situazione in cui è utile rimandare la creazione ed inizializzazione di strutture complesse fino a quando non devono essere effettivamente utilizzate. 
 
-C++ offre la classe `std::once_flag` e la funzione `std::call_once(flag,f,...)`. La classe registra in modo thread safe se è già avvenuta o sia in corso una chiamata a call_once.
+C++ offre la classe `std::once_flag` e la funzione `std::call_once(once_flag,Callable,...)`. La classe **registra in modo thread safe se è già avvenuta o sia in corso una chiamata a call_once**.
 
-call_once esegue la funzione f una sola volta: se dal flag passato non risultatno chiamate, inizia l'invocazione, se risultano, blocca l'esecuzione in attesa del suo risultato.
+call_once esegue la funzione f una sola volta: **se dal flag passato non risultano chiamate, inizia l'invocazione, se risultano, blocca l'esecuzione in attesa del suo risultato**.
 
 Con questo meccanismo è ad esempio possibile implementare una classe singleton thread safe.
 
@@ -1909,7 +1979,7 @@ private:
 
 public:
   static Singleton *getInstance() {
-    std::call_once( inited, []() {
+    std::call_once(inited, []() {
         instance = new Singleton();
       });
     return instance;
@@ -2536,13 +2606,13 @@ Permettono il trasferimento atomico di blocchi di byte, comportamento FIFO.
 Permettono il trasferimento di sequenze di byte di dimensioni arbitrarie tra due processi:
 
 * occorre inserire marcatori che consentano di delimitare i singoli messaggi, i.e. formato TLV.
-* comunicazione sincrona 1-1
+* comunicazione sincrona (bloccante) 1-1, permette sincronizzazione
 
 ### Memoria condivisa
 
-permette di avere uno spazio di memoria indirizzato tra due processi. Occorre sincronizzare l'accesso all'area condivisa, ad esempio utilizzando un Semaforo (permette sincronizzazione a livello di SO ta più processi).
+permette di avere uno spazio di memoria indirizzato da due o più processi. Occorre sincronizzare l'accesso all'area condivisa, ad esempio utilizzando un Semaforo (permette sincronizzazione a livello di SO ta più processi).
 
-Sincronizzazione tra processi attraverso **semafori**:
+### Semafori
 
 * costrutto di sincronizzazione a basso livello, basato sulla manipolazione atomica di un valore intero.
 * Il valore è gestito dal SO e non può mai diventare negativo
@@ -2562,8 +2632,8 @@ Fattori che influenzano la scelta del canale di comunicazione:
 
 * **relazione e dipendenza tra i processi**: se ci sono dipendenze padre-figlio, una pipe ha senso. Se non ci sono dipendenze, non è possibile condividere handle.
 * **comunicazione mono/bi-direzionale**? 
-* **Numero di procesi coinvolti*
-* Comunicazione tra macchine diverse? una sola soluzione: socket.
+* **Numero di procesi coinvolti**
+* Comunicazione tra **macchine diverse**? una sola soluzione: socket.
 
 
 ## IPC in Windows
@@ -2655,9 +2725,10 @@ Peste.
 
 Ciascuna struttura IPC è identificata nel SO da un **intero non negativo** (file descriptor): all'atto della creazione di un oggetto IPC, si fornisce una chiave, il SO converte questa chiave nell'ID associato (un file descriptor). Un processo può creare una nuova struttura IPC con chiave diversa da zero: tutti i processi che conoscono la chiave possono ottenere l'ID corrispondente.
 
+La chiave può essere creata utilizzando la funzione `ftok()`, che genera la chiave a partire dal nome di un file (il suo contenuto è irrilevante) ed un byte che rappresenta il project-ID. 
+
 L'ultimo processo che fa accesso ad una struttura dati IPC deve occuparsi della rimozione della stessa, altrimenti esso continuerà ad essere un oggetto kernel valido.
 
-La chiave può essere creata utilizzando la funzione `ftok()`, che genera la chiave a partire dal nome di un file (il suo contenuto è irrilevante) ed un byte che rappresenta il project-ID. 
 
 ### Message queues
 

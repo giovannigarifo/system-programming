@@ -2,7 +2,7 @@
 // Created by giovanni on 26/05/19.
 //
 
-#include "StringSearcher.h"
+#include "ThreadStringSearcher.h"
 #include "FileSearcherException.h"
 #include <sstream>
 
@@ -10,20 +10,20 @@ mutex tuple_vector_mutex;
 
 
 // Constructor
-StringSearcher::StringSearcher(string desiredString, vector<string> inputFiles){
+ThreadStringSearcher::ThreadStringSearcher(string desiredString, vector<string> inputFiles){
 
     this->workers = list<thread>();
     this->searchResults = tuple_vector();
 
     for (string inputFile : inputFiles)
-        this->workers.push_back(std::move(thread(&StringSearcher::searchInFile,
+        this->workers.push_back(std::move(thread(&ThreadStringSearcher::searchInFile,
                                                  this, desiredString,
                                                  inputFile,
                                                  std::ref((this->searchResults))))); //passed as reference
 }
 
 // Destructor implements RAII
-StringSearcher::~StringSearcher() {
+ThreadStringSearcher::~ThreadStringSearcher() {
 
     for (auto &worker : workers)
         if(worker.joinable())
@@ -44,7 +44,7 @@ StringSearcher::~StringSearcher() {
  * @param fileName
  * @param searchResults : the list is passes as reference
  */
-void StringSearcher::searchInFile(string desiredString, string fileName, tuple_vector& searchResults) {
+void ThreadStringSearcher::searchInFile(string desiredString, string fileName, tuple_vector& searchResults) {
 
     ifstream ifs;
     int num = 0;

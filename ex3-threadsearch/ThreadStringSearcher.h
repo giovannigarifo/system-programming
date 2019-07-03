@@ -18,7 +18,7 @@ using namespace std;
 typedef list<tuple<thread::id, int >> tuple_vector;
 
 
-class StringSearcher {
+class ThreadStringSearcher {
 
 private:
     list<thread> workers; // list of threads that perform the search
@@ -26,8 +26,8 @@ private:
     void searchInFile(string desiredString, string fileName, tuple_vector& searcResults); // function executed by each thread, it searches in a single file
 
 public:
-    ~StringSearcher();
-    StringSearcher(string desiredString, vector<string> inputFiles);
+    ~ThreadStringSearcher();
+    ThreadStringSearcher(string desiredString, vector<string> inputFiles);
 
 };
 

@@ -1,6 +1,7 @@
 #include <iostream>
 
-#include "StringSearcher.h"
+#include "ThreadStringSearcher.h"
+#include "AsyncStringSearcher.h"
 
 
 int main() {
@@ -10,7 +11,12 @@ int main() {
     files.emplace_back("test2.txt");
     files.emplace_back("test3.txt");
 
-    StringSearcher ss = StringSearcher("test1", files);
+    bool asyncMode = true; //for poor man switch
+
+    if(asyncMode)
+        AsyncStringSearcher ass = AsyncStringSearcher("test1", files); //TODO: change object name :)
+    else
+        ThreadStringSearcher tss = ThreadStringSearcher("test1", files);
 
     return 0;
 }
