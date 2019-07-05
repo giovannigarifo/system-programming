@@ -22,7 +22,7 @@ Le API permettono di interfacciarsi con le strutture dati che il SO gestisce per
 
 ## ABI
 
-definisce **il formato** che deve avere un prodotto SW per essere compatibile con il SO: convezioni da utilizzare (i.e. accesso a strutture dati del sistema attraverso Handle/FileDescriptor), uso dei registri, innalzamento di privilegio, caricamento dinamico di moduli, emulazione dlele piattaforme di esecuzione, ecc. E' supportata dagli strumenti che compongolo la toolchain. 
+definisce **il formato** che deve avere un prodotto SW per essere compatibile con il SO: **convezioni** da utilizzare (i.e. accesso a strutture dati del sistema attraverso Handle/FileDescriptor), uso dei registri, innalzamento di privilegio, caricamento dinamico di moduli, emulazione dlele piattaforme di esecuzione, ecc. E' supportata dagli strumenti che compongolo la toolchain. 
 
 
 ## Gestione degli errori
@@ -765,9 +765,13 @@ class Der : public Base {
 
 Gli oggetti C++ non posseggono alcun campo che definisce il tipo della classe, per chiamare il metodo corretto, viene utilizzato il meccanismo della `V-table.`
 
-I metodi virtual sono aggiunti nella `V-table` che è la tabella dei metodi virtuali. **Ogni classe che ha almeno un metodo virtuale ha una sua Virtual Table**, creata in fase di compilazione.  Contiene tante righe quanti sono i metodi virtuali degli oggetti creati di questa classe. 
+I metodi virtual sono aggiunti nella `V-table` che è la tabella dei metodi virtuali. **Ogni classe che ha almeno un metodo virtuale ha una sua Virtual Table, creata in fase di compilazione**.  Contiene tante righe quanti sono i metodi virtuali degli oggetti creati di questa classe. 
 
-Ogni volta che viene creato un oggetto che contiene almeno la dichiarazione o implentazione di un metodo virtuale, nella memoria allocata per l'oggetto si aggiunge il puntatore alla **V-table della classe**. Questo significa che la chiamata ad un metodo virtuale costa un pò di più.
+Ogni volta che viene creato un oggetto di una classe che contiene almeno la dichiarazione o implentazione di un metodo virtuale, nella memoria allocata per l'oggetto si aggiunge il puntatore alla **V-table della classe**. 
+
+Ogni entry della v-table contiene il puntatore all'implementazione più derivata possibile del corrispondente metodo virtuale. Se un metodo virtuale non è stato specializzato nella clasee derivata, la entry della virtual table punterà all'implementazione della classe base.
+
+Questo significa che la chiamata ad un metodo virtuale costa un pò di più.
 
 ```
 //lavoro con puntatori, posso utilizzare puntatore a classe base.
@@ -780,7 +784,9 @@ b1->f(); //il compilatore accede alla vtable di b1 da cui legge il puntatore ad 
 
 ## Typecast
 
-* `static_cast<T>(p)`, utile per salire nell'albero di ereditarietà (verso la classe base). Converte il valore di p (come noto al compilatore) rendendolo di tipo T.
+### `static_cast<T>(p)`
+
+Utile per salire nell'albero di ereditarietà (verso la classe base, upcast). Converte il valore di p **come noto al compilatore** rendendolo di tipo T, in caso di puntatori, quindi, non viene verificato il tipo dell'oggetto puntato, ma il tipo del puntatore.
 
 ```
 Derivata *d=new Derivata();
@@ -796,11 +802,22 @@ b2=static_cast<base2*>(b1)
 */
 ```
 
-* `dynamic_cast<T>(p)`, utile per scendere nell'albero di ereditarietà. Effettua controllo di compatibilità a runtime assicurando cast sicuri tra tipi di classi. Applicato ad un puntatore, ritorna 0 se il cast non è valido. Applicato ad un riferimento, genera un'eccezione. Permette di effettuare il downcast da una classe virtuale di base ad una derivata.
+Se si effettua un downcast (dalla classe base verso la classe derivata) il compilatore non segnala alcun errore, ma a runtime potrebbero verificarsi dei problemi.
 
-* `reinterpret_cast<T>(p)`, analogo al cast c-style.
+Inoltre, nell'esempio precedente, anche se b1==d, fare il cast da b1 a b2 produrrebbe un errore (`b2 = static_cast<Base2*>(b1)`).
 
-* `const_cast<T>(p)`, elimina la caratteristica di costante da p.
+
+### `dynamic_cast<T>(p)`
+ 
+Utile per scendere nell'albero di ereditarietà. **Effettua controllo di compatibilità a runtime** assicurando cast sicuri tra tipi di classi. Applicato ad un puntatore, ritorna 0 se il cast non è valido. Applicato ad un riferimento, genera un'eccezione. Permette di effettuare il downcast da una classe virtuale di base ad una derivata.
+
+### `reinterpret_cast<T>(p)`
+
+Analogo al cast c-style. Consente al compilatore di violare il sistema die tipi, convertento il dato p in un dato di tipo T.
+
+### `const_cast<T>(p)`
+
+Elimina la caratteristica di costante da p.
 
 
 # **Gestione delle eccezioni nel C++**
@@ -1916,7 +1933,7 @@ void f(std::promise<std::string> p) {
 
 int main() {
   std::promise<std::string> p;
-  std::future<std::string> f = p.get_future();
+  std::future<std::string> fut = p.get_future();
   
   // creo un thread, forzando p a essere passata per movimento
   std::thread t(f, std::move(p));  
@@ -1925,7 +1942,8 @@ int main() {
   // faccio altro...
 
   // accedo al risultato del thread
-  std::string res = f.get();
+  std::string res = fut.get();
+
 }
 ```
 
@@ -2125,10 +2143,12 @@ Lo stato dell'applicazione è mantenuto dal **model**, e verrà aggiornato dalle
 Per facilitare il compito della vista di mantenere aggiornate le proprie strututre dati al variare delle informazioni contenute nel modello, spesso si ricorre al pattern observer:
 
 * Il modello mantiene una lista di viste interessate ai suoi cambiamenti.
-* ogni volta che il modello cambia una parte del proprio stato, notifica tutte le viste al momento registrate del cambiamento avvenuto.
-* La vista reggisce alla notifica aggiornando il proprio contenuto.
+* ogni volta che il modello cambia una parte del proprio stato, notifica tutte le viste al momento registrate del cambiamento avvenuto, in Qt, emette uno dei suoi segnali.
+* La vista reagisce alla notifica aggiornando il proprio contenuto, in Qt, attraverso la chiamata ad uno dei suoi slot, che sono stati connessi ad uno dei segnali del modello.
 
-In alcune situazione, può essere necessario ricorrere ad un oggetto intermediario, detto **adapter**, che si registri come osservatore del modlel e, in base al suo contenuto, decida quali e quanti widget debbano dover far parte dell'albero delle viste (i.e. Adapter per la RecycleView di Android). Questo permette, in caso di viste contenenti molti widget, di limitare la struttura topologica dell'albero alle sole viste utili (quelle visibili all'utente).
+In alcune situazione, può essere necessario ricorrere ad un oggetto intermediario, detto **adapter**, che si registri come osservatore del modello e, in base al suo contenuto, decida quali e quanti widget debbano dover far parte dell'albero delle viste (i.e. Adapter per la RecycleView di Android). Questo permette, in caso di viste contenenti molti widget, di limitare la struttura topologica dell'albero alle sole viste utili (quelle visibili all'utente).
+
+In Qt, il pattern observer è implementato dai signal/slot e dal pattern model/view.
 
 
 # **Il framework Qt**
@@ -2142,11 +2162,11 @@ Qt estende il C++ aggiungendo le seguenti funzionalità:
 * **timer a intervalli** che rendono possibile implementare task non bloccanti
 * **organizzazione degli oggetti ad albero**, gerarchica e interrogabile
 * **puntatori gestiti (QPointer)**, automaticamente impostati a 0 quando l'oggetto referenziato viene distrutto
-* un meccanismo id **dynamic cast**
+* un meccanismo di **dynamic cast**
 
 ### QObject
 
-`QObject` è la classe padre della maggior parte delle classi di Qt, compresi tutti i `QWidget`. Le responsabilità di questa classe sono di gestire la memoria, effettuare l'identificazione del tipo a runtime (introspezione) e gestire gli eventi. Non offre alcun meccanismo di garbage collection ma un sistema di trasferimento del possesso, analogamente agli smart pointer.
+`QObject` è la classe padre della maggior parte delle classi di Qt, compresi tutti i `QWidget`. Le responsabilità di questa classe sono di gestire la memoria, effettuare **l'identificazione del tipo a runtime** (introspezione) e gestire gli eventi. Non offre alcun meccanismo di garbage collection ma un sistema di trasferimento del possesso, analogamente agli smart pointer.
 
 Ogni istanza di un `QObject` può ricevere come argomento del proprio costruttore il puntatore ad un genitore. Il figlio informa il genitore della propria esistenza, che provvederà ad aggiungerlo alla lista dei propri figli.
 
@@ -2161,7 +2181,7 @@ Gli oggetti che non ereditano da `QObject` sono invece allocato nello stack, i.e
 
 Fanno eccezione `QFile`, `QApplication` ed i dialog che, pur ereditando da `QObject` vengono di solito allocati sullo stack.
 
-Quando un `Qobject` viene creato, ne viene impostata **l'affinità al thread** in cui tale operazione avviene, tutti i figli devono avere la stessa affinità del genitore.
+Quando un `QObject` viene creato, ne viene impostata **l'affinità al thread** in cui tale operazione avviene, tutti i figli devono avere la stessa affinità del genitore.
 
 Il **Meta Object Compiler (MOC)** di Qt compila tutti i QObject in classi C++, dopo si può effettuare la compilazione del risultato utilizzando il compilatore standard.
 
@@ -2320,7 +2340,7 @@ Il pattern Model/View prevede la fusione del controller nella view, in modo da o
 
 ## Meta-Object System (MOS)
 
-Qt mantiene all'interno degli oggetti del framework un sistema di meta-informazioni per classi e tipi che **permette l'estensione del linguaggio C++**:
+Qt mantiene all'interno degli oggetti del framework un **sistema di meta-informazioni** per classi e tipi che **permette l'estensione del linguaggio C++**:
 
 * abilita i meccanismi di signal e slot per la comunicazione tra oggetti
 * implementa le proprietà dinamiche
@@ -2352,9 +2372,9 @@ La classe `QMetaType` è usata da Qt per rendere disponibili le informazioni sui
 
 ## Gestire l'interazione: Signal e slot
 
-Gli oggetti posso interagire tra di loro, ad esempio per gestire l'aggiornamento della vista, attraverso un meccanismo basato su `signal` e `slot` che implementano il pattern observer.
+Gli oggetti posso interagire tra di loro, ad esempio per gestire l'aggiornamento della vista, attraverso un meccanismo basato su `signal` e `slot` che **implementano il pattern observer in Qt**.
 
-Un `signal` è un particolare metodo presente all'interno di una classe Qt, che viene implementato dal MOC, Meta Object Compiler, di Qt. E' possibile emettere un signal utilizzando il metodo `emit()`.
+Un `signal` è un particolare metodo dichiarato all'interno di una classe Qt, nella sezione `signals:` della classe, che **viene implementato dal MOC**, Meta Object Compiler, di Qt. E' possibile emettere un signal utilizzando la keyword `emit`.
 
 Gli `slot` sono dei metodi che possono essere chiamati quando vengono connessi ad un signal, attraverso la funzione statica `connect()` offerta da QObject, la funzione è **sincrona**.
 
@@ -2390,7 +2410,7 @@ Quando un oggetto intende far sapere al resto del sistema che al proprio interno
 
 Se, viceversa, **un oggetto vuole reagire ad un cambiamento esterno in un altro oggetto**, esso può implementare tale comportamento in uno dei propri slot. Una opportuna funzione statica, la `QObject::connect()` permette di collegare dinamicamente signal e slot di oggetti differenti.
 
-Ogni volta che un oggetto emettera un segnale, tutti gli slot che sono stati collegati al segnale saranno eseguiti.
+Ogni volta che un oggetto emetterà un segnale, tutti gli slot che sono stati collegati al segnale saranno eseguiti.
 
 ```
 void main(int argc, char**argv) {
@@ -2412,7 +2432,7 @@ void main(int argc, char**argv) {
 }
 ```
 
-Una nuova sintassi per signal e slot è stata introdotta nelle versioni recenti di Qt.
+Una nuova sintassi per signal e slot è stata introdotta nelle versioni recenti di Qt, basata sulle macro `SIGNAL()` e `SLOT()`.
 
 vantaggi:
 
@@ -2422,7 +2442,7 @@ vantaggi:
 
 svantaggi:
 
-* gli argomenti di default negli slot non sono più supportatinon c'è disconnessione automatica da una funzione semplice (senza Q_OBJECT) quando il ricevente viene distrutto (va chiamata `disconnect()`).
+* gli argomenti di default negli slot non sono più supportati, non c'è disconnessione automatica da una funzione semplice (senza Q_OBJECT) quando il ricevente viene distrutto (va chiamata `disconnect()`).
 
 ```
 QMetaObject::Connection m_conn;
@@ -2527,7 +2547,7 @@ Questo nuovo processo figlio **può condividere** con il padre variabili d'ambie
 
 ## Processi in Linux
 
-Si crea un processo con l'operazione `fork()`: crea un nuovo spazio di indirizzamento identico a quello del processore genitore, secondo la politica Copy-On-Write. Fork ritorna al processo padre il PID del figlio, al figlio ritorna 0, può ottenere il PID del padre attraverso la funzione `getpid()`.
+Si crea un processo con l'operazione `fork()`: crea un nuovo spazio di indirizzamento identico a quello del processo genitore, secondo la politica Copy-On-Write. Fork ritorna al processo padre il PID del figlio, al figlio ritorna 0, può ottenere il PID del padre attraverso la funzione `getppid()`.
 
 La famiglia di funzioni `exec*()` sostituiscono l'attuale immagine di memoria (l'eseguibile) dello spazio di indirizzamento del processo che chiama la funzione. Permette ad esempio al figlio di eseguire un nuovo eseguibile.
 
@@ -2571,14 +2591,16 @@ In questo modo sia il processo padre che figlio continueranno la loro esecuzione
 
 ## IPC
 
-Il SO impedisce il trasferimento diretto di dati tra due processi (conseguenza dell'avere due spazi di indirizzamento diversi ed isolati). Ogni SO offre alcuni meccanismi per superare la barriera in modo controllato, ed ogni SO implementa questi meccanismi in modi diversi. 
+Come conseguenza dell'avere due spazi di indirizzamento diversi, non è possibile condividere dati tra processi attraverso l'uso di variabili globali o zone di memoria condivise e protette da meccanismi di sincronizzazione. 
+
+Ogni SO offre alcuni meccanismi per superare la barriera tra due processi in modo controllato, ed ogni SO implementa questi meccanismi in modi diversi. 
 
 L'IPC permette:
 
-* **sincronizzazione** delle attività tra processi differenti
-* **scambio di dati** tra processi
+* **sincronizzazione** delle attività tra processi differenti, informa i processi che qualcosa sia avvenuto nell'altro, alcuni costrutti di IPC sono bloccanti, permettendo di implementare l'attesa.
+* **scambio di dati** tra processi.
 
-Indipendentemente dal tipo di meccanismo adottato per l'implementazione dell'IPC, occorre adattare le informazioni scambiate, così da renderle comprensibili al destinatario: i.e., i puntatori non hanno significato se lo spazio di indirizzamento cambia.
+Indipendentemente dal tipo di meccanismo adottato per l'implementazione dell'IPC, **occorre adattare le informazioni scambiate**, così da renderle comprensibili al destinatario: i.e., i puntatori non hanno significato se lo spazio di indirizzamento cambia.
 
 **Rappresentazione esterna**: formato intermedio che permette la rappresentazione di strutture dati arbitrarie, **sostituendo i puntatori con riferimenti indipendenti dalla memoria**.
 
@@ -2593,7 +2615,7 @@ Il passaggio da rappresentazione interna a rappresentazione è detta **serializz
 
 ### Code di messaggi
 
-Permettono l'invio di messaggi asincroni tra due o più processi, permette quindi scambio di dati ma anche sincronizzazione, dato che la ricezione e successiva lettura di un messaggio mette al corrente il processo che qualche cosa (che ha scatenato l'invio del messaggio) si è verificata nell'altro processo.
+Permettono **l'invio di messaggi asincroni** tra due o più processi, permette quindi scambio di dati ma anche sincronizzazione, dato che la ricezione e successiva lettura di un messaggio mette al corrente il processo che qualche cosa (che ha scatenato l'invio del messaggio) si è verificata nell'altro processo.
 
 Permettono il trasferimento atomico di blocchi di byte, comportamento FIFO.
 
@@ -2605,8 +2627,8 @@ Permettono il trasferimento atomico di blocchi di byte, comportamento FIFO.
 
 Permettono il trasferimento di sequenze di byte di dimensioni arbitrarie tra due processi:
 
-* occorre inserire marcatori che consentano di delimitare i singoli messaggi, i.e. formato TLV.
-* comunicazione sincrona (bloccante) 1-1, permette sincronizzazione
+* occorre inserire marcatori che consentano di delimitare i singoli messaggi, i.e. formato **TLV**.
+* **comunicazione sincrona** (bloccante) 1-1, permette sincronizzazione.
 
 ### Memoria condivisa
 
